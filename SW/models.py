@@ -3,11 +3,11 @@ from torch import nn
 
 
 class MLP(nn.Module):
-    def __init__(self, x1, x2, x3, pdrop=0.1):
+    def __init__(self, dim1, dim2, dim3, pdrop=0.1):
         super().__init__()
-        self.fc1 = nn.Linear(x1 * x2 * x3, 20)
+        self.fc1 = nn.Linear(dim1 * dim2 * dim3, 20)
         self.fc2 = nn.Linear(20, 20)
-        self.fc3 = nn.Linear(20, 4)
+        self.fc3 = nn.Linear(20, dim2)
         self.drop = nn.Dropout(pdrop)
         self.relu = nn.ReLU()
         self.sigmoid = nn.Sigmoid()
@@ -35,7 +35,7 @@ class ConvNet(nn.Module):
         self.pool = nn.MaxPool2d(kernel_size=2)
         
         self.fc1 = nn.Linear(16 * (dim1 - dim1_kernel1 - dim1_kernel2 + 2) * (dim2 - dim2_kernel1 - dim2_kernel2 + 2), 32)
-        self.fc2 = nn.Linear(32, 4)
+        self.fc2 = nn.Linear(32, self.dim2)
         
         self.relu = nn.ReLU()
         self.tanh = nn.Tanh()

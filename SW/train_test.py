@@ -77,6 +77,7 @@ def train(model, X_train, y_train, nb_epochs, i, eta=1e-3, mini_batch_size=1, ve
             #plt.suptitle(end_date.date().strftime(format='%b %Y'))
             plt.show()
 
+            
 def test(model, X_test, y_test):
     pred = np.zeros((X_test.size(0), y_test.size(1)))
     prob = []
