@@ -27,7 +27,7 @@ def performance_plot(df_pred, model, daily_returns, bench_price):
     perf_pred_net = pred_to_perf(df_pred, daily_returns, 0.0012, log=True).rename('Model with transaction costs')
 
     data = pd.concat([perf_pred_gross, perf_pred_net, 
-                      price_to_perf(bench_price[df_pred.index[0]:df_pred.index[-1]]), log=True], axis=1)
+                      price_to_perf(bench_price[df_pred.index[0]:df_pred.index[-1]], log=True)], axis=1)
 
     fig = plt.figure(figsize=(14,6))
     plt.title(model, fontsize=14, fontweight='bold')
