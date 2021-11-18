@@ -59,7 +59,7 @@ def train(model, X_train, y_train, nb_epochs, X_test=None, y_test=None, i=None, 
 
         if verbose in (2, 4):
             if (e % 5) == 0:
-                print('epoch', e + 1, ':', np.round(acc_loss, 4), 'accuracy :', output_to_accu(model, X_train, y_train), '%')
+                print('epoch', e + 1, 'loss :', np.round(acc_loss, 4), 'accuracy :', np.round(output_to_accu(model, X_train, y_train), 2), '%')
 
         if verbose in (1, 2):
             model.eval()

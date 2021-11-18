@@ -86,6 +86,7 @@ def strat(df_input_all, price, rebalance_freq, model_name='MLP', nb_epochs=50, i
     else:
         df_input_period = df_input_all.iloc[-input_period:]
 
+    print(X.device)
     X = df_input_period.values.reshape(input_period, num_tickers, num_features)
     X = torch.from_numpy(X).float()
     X = X.view(1, X.size(0), X.size(1), X.size(2))
@@ -98,13 +99,13 @@ def strat(df_input_all, price, rebalance_freq, model_name='MLP', nb_epochs=50, i
 def run():
     price, _, df_X = get_price_data()
 
-    # models_list = ['MLP', 'ConvNet', 'LSTM']
-    models_list = ['LSTM']
+    models_list = ['MLP', 'ConvNet', 'LSTM']
+    # models_list = ['LSTM']
     output = pd.DataFrame(index=['Ensemble'], columns=price.columns)
 
     batch_size = 10
     training_window = 5
-    nb_epochs = 1000
+    nb_epochs = 500
     verbose = 4
     rebalance_freq = 'W-FRI'
     input_period_days = 15
@@ -128,9 +129,11 @@ def run():
             output.loc['Ensemble'] = output.loc[model_name]
         else:
             output.loc['Ensemble'] += output.loc[model_name]
+
     output.loc['Ensemble'] /= len(models_list)
     print(32 * '*')
     print(output.round(2))
     print(32 * '*')
+    
 if __name__ == "__main__":
     run()
