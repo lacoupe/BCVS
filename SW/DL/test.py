@@ -7,8 +7,8 @@ from models import MLP, ConvNet, LSTM
 from train_test import train
 from data import get_price_data
 
-import os, sys
-sys.path.append(os.path.join(os.epath.dirname(__file__)))
+# import os, sys
+# sys.path.append(os.path.join(os.path.dirname(__file__)))
 
 def strat(df_input_all, price, rebalance_freq, model_name='MLP', nb_epochs=50, input_period=8, training_window=5, batch_size=1, verbose=0, eta=1e-3):
 
