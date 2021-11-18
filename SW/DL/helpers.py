@@ -2,6 +2,38 @@ import numpy as np
 import matplotlib.pyplot as plt
 import seaborn as sns
 import pandas as pd
+from dateutil.relativedelta import relativedelta
+import calendar
+
+
+def last_month(date):
+    year, month = date.year, date.month
+    date_month = date.replace(day=calendar.monthrange(year, month)[1])
+    return date_month
+
+def last_friday(date):
+    delta_days = 4 - date.weekday()
+    if delta_days > 0:
+        delta_days -= 7
+    last_friday = date + relativedelta(days=delta_days)
+    return last_friday
+
+def next_friday(date):
+    delta_days = 4 - date.weekday()
+    if delta_days < 0:
+        delta_days += 7
+    last_friday = date + relativedelta(days=delta_days)
+    return last_friday
+
+def RSI(price, window):
+    price_diff = price.diff()
+    gain = price_diff.mask(price_diff < 0, 0.0)
+    loss = - price_diff.mask(price_diff > 0, -0.0)
+    avg_gain = gain.rolling(window=window).mean()
+    avg_loss = loss.rolling(window=window).mean()
+    rs = avg_gain / avg_loss
+    rsi = 1 - 1 / (1 + rs)
+    return rsi
 
 def perf_to_stat(perf_gross, perf_net):
     
@@ -123,7 +155,7 @@ def pred_to_perf(df_pred, daily_returns, tax=0., log=False):
     return perf
 
 
-def pred_to_daily_ret(df_pred, daily_returns, tax=0., log=False):
+def pred_to_daily_ret(df_pred, daily_returns, log=False):
     first_date = df_pred.index[0]
     last_date = df_pred.index[-1]
     daily_ret = daily_returns[first_date:last_date]
@@ -138,3 +170,28 @@ def price_to_perf(df, log=False):
     else:
         perf = np.log(1 + df.pct_change().fillna(0)).cumsum()
     return perf
+
+def resume_backtest(df_pred_dict, bench_price, price):
+
+    daily_returns = price.pct_change()
+    perf_bench = price_to_perf(bench_price.loc[next(iter(df_pred_dict.items()))[1].index[0]:next(iter(df_pred_dict.items()))[1].index[-1]], log=False)
+
+    bench_stats = perf_to_stat(perf_bench, perf_bench)
+    stats = []
+    stats.append(bench_stats + [0])
+    for model_name in df_pred_dict:
+        perf_gross = pred_to_perf(df_pred_dict[model_name], daily_returns, 0.)
+        perf_net = pred_to_perf(df_pred_dict[model_name], daily_returns, 0.0012)
+        
+        turnover_num = turnover(df_pred_dict[model_name])
+        stats.append(perf_to_stat(perf_gross, perf_net) + [turnover(df_pred_dict[model_name])])
+    stats = np.array(stats)
+
+    df_stats = pd.DataFrame(data=stats, columns=['Gross avg. annual return (%)', 'Net avg. annual return (%)', 
+                                                'Avg. annual vol. (%)', 'Avg Sharpe ratio', 
+                                                'Max. Drawdown (%)', 'Turnover'], 
+                            index=['Benchmark SPI'] + list(df_pred_dict.keys())).round(2)
+
+    df_stats.Turnover = df_stats.Turnover.apply(int)
+
+    return df_stats

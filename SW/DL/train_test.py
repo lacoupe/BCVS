@@ -3,6 +3,7 @@ import torch
 from torch import nn
 import matplotlib.pyplot as plt 
 from torch.utils.data import TensorDataset, DataLoader
+from tqdm import tqdm
 
 def output_to_accu(model, X, y):
     nb_errors = 0
@@ -17,7 +18,6 @@ def output_to_accu(model, X, y):
 
 
 def output_to_loss(model, X, y):
-    nb_errors = 0
     loss = 0
     criterion = nn.BCELoss()
     for b in range(0, X.size(0)):
@@ -27,7 +27,7 @@ def output_to_loss(model, X, y):
     return loss
 
 
-def train(model, X_train, y_train, X_test, y_test, nb_epochs, i, eta=1e-3, batch_size=1, verbose=0):
+def train(model, X_train, y_train, nb_epochs, X_test=None, y_test=None, i=None, eta=1e-3, batch_size=1, verbose=0):
     
     optimizer = torch.optim.Adam(model.parameters(), lr=eta)
     criterion = nn.BCELoss()
@@ -40,9 +40,9 @@ def train(model, X_train, y_train, X_test, y_test, nb_epochs, i, eta=1e-3, batch
         test_loss_list = []
     
     train_set = TensorDataset(X_train, y_train)    
-    train_loader = DataLoader(train_set, batch_size=batch_size)
-    
-    for e in range(nb_epochs):
+    train_loader = DataLoader(train_set, batch_size=batch_size, shuffle=True)
+
+    for e in (tqdm(range(nb_epochs)) if (verbose == 3) else range(nb_epochs)):
         acc_loss = 0
         for train_input, train_target in train_loader:
             optimizer.zero_grad()
@@ -79,7 +79,7 @@ def train(model, X_train, y_train, X_test, y_test, nb_epochs, i, eta=1e-3, batch
             axs[1].plot(list(range(nb_epochs)), train_accu_list, label='Train accuracy')
             axs[1].plot(list(range(nb_epochs)), test_accu_list, label='Test accuracy')
             axs[1].legend()
-            #plt.suptitle(end_date.date().strftime(format='%b %Y'))
+            # plt.suptitle(end_date.date().strftime(format='%b %Y'))
             plt.show()
 
             
@@ -90,7 +90,8 @@ def test(model, X_test, y_test, threshold=None):
     
     for k in range(0, X_test.size(0)):
         output = model(X_test.narrow(0, k, 1))
-        
+        prob.append(output.cpu().detach().numpy())
+
         if threshold is None:
             _, pred_index = output.max(1)
             pred[k, pred_index.item()] = 1
@@ -106,7 +107,8 @@ def test(model, X_test, y_test, threshold=None):
                 else:
                     pred[k] = pred[k-1]
                     
-        prob.append(output.detach().numpy())
+        
+
     return np.array(prob), pred
 
     

@@ -3,11 +3,11 @@ from torch import nn
 
 
 class MLP(nn.Module):
-    def __init__(self, dim1, dim2, dim3, pdrop=0.1):
+    def __init__(self, dim1, dim2, dim3, pdrop=0.2):
         super().__init__()
         self.fc1 = nn.Linear(dim1 * dim2 * dim3, 20)
-        self.fc2 = nn.Linear(20, 20)
-        self.fc3 = nn.Linear(20, dim2)
+        self.fc2 = nn.Linear(20, 10)
+        self.fc3 = nn.Linear(10, dim2)
         self.drop = nn.Dropout(pdrop)
         self.relu = nn.ReLU()
         self.sigmoid = nn.Sigmoid()
@@ -50,7 +50,7 @@ class ConvNet(nn.Module):
         x = self.relu(self.drop2d(self.conv1(x)))
         x = self.relu(self.drop2d(self.conv2(x)))
         
-        #print(x.shape)
+        # print(x.shape)
         x = x.flatten(start_dim=1)
 
         x = self.relu(self.drop(self.fc1(x)))
@@ -62,7 +62,7 @@ class ConvNet(nn.Module):
     
 class LSTM(nn.Module):
 
-    def __init__(self, input_size, output_size, hidden_size=20, num_layers=5, dropout=0.1):
+    def __init__(self, input_size, output_size, device, hidden_size=20, num_layers=5, dropout=0.1):
         super(LSTM, self).__init__()
         
         self.input_size = input_size
@@ -70,6 +70,7 @@ class LSTM(nn.Module):
         self.hidden_size = hidden_size
         self.num_layers = num_layers
         self.dropout = dropout
+        self.device = device
         
         self.lstm = nn.LSTM(input_size=self.input_size, hidden_size=self.hidden_size, 
                             num_layers=self.num_layers, batch_first=True, dropout=self.dropout)
@@ -78,8 +79,8 @@ class LSTM(nn.Module):
         self.relu = nn.ReLU()
         
     def forward(self, x):
-        h0 = torch.randn(self.num_layers, x.size(0), self.hidden_size)
-        c0 = torch.randn(self.num_layers, x.size(0), self.hidden_size)
+        h0 = torch.randn(self.num_layers, x.size(0), self.hidden_size).to(self.device)
+        c0 = torch.randn(self.num_layers, x.size(0), self.hidden_size).to(self.device)
         x = x.view(x.size(0), x.size(1), x.size(2) * x.size(3))
         x, _ = self.lstm(x, (h0, c0))
         x = self.relu(x)
