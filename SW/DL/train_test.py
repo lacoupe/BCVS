@@ -46,6 +46,7 @@ def train(model, X_train, y_train, nb_epochs, X_test=None, y_test=None, i=None, 
 
     for e in (tqdm(range(nb_epochs)) if (verbose == 3) else range(nb_epochs)):
         acc_loss = 0
+        model.train()
         for train_input, train_target in train_loader:
             optimizer.zero_grad()
             output = model(train_input)
