@@ -89,7 +89,7 @@ def strat(df_input_all, price, rebalance_freq, model_name='MLP', nb_epochs=50, i
     print(X.device)
     X = df_input_period.values.reshape(input_period, num_tickers, num_features)
     X = torch.from_numpy(X).float()
-    X = X.view(1, X.size(0), X.size(1), X.size(2))
+    X = X.view(1, X.size(0), X.size(1), X.size(2)).to(device)
 
     model.eval()
     out = model(X)
@@ -106,7 +106,7 @@ def run():
     batch_size = 10
     training_window = 5
     nb_epochs = 500
-    verbose = 0
+    verbose = 3
     rebalance_freq = 'W-FRI'
     input_period_days = 15
     input_period_weeks = 8
