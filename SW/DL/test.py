@@ -7,7 +7,10 @@ from models import MLP, ConvNet, LSTM
 from train_test import train
 from data import get_price_data
 
-def strat(df_input_all, price, rebalance_freq, model_name='MLP', nb_epochs=50, input_period=8, training_window=5, batch_size=1, verbose=0):
+import os, sys
+sys.path.append(os.path.join(os.path.dirname(__file__)))
+
+def strat(df_input_all, price, rebalance_freq, model_name='MLP', nb_epochs=50, input_period=8, training_window=5, batch_size=1, verbose=0, eta=1e-3):
 
     last_date = price.index[-1]
 
@@ -59,6 +62,7 @@ def strat(df_input_all, price, rebalance_freq, model_name='MLP', nb_epochs=50, i
     X = X.sub_(train_mean).div_(train_std)
 
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+    print("The device used is", device)
     X = X.to(device)
     y = y.to(device)
 
@@ -72,7 +76,7 @@ def strat(df_input_all, price, rebalance_freq, model_name='MLP', nb_epochs=50, i
         model = LSTM(input_size=num_tickers * num_features, output_size=num_tickers, device=device)
     model.to(device)
 
-    train(model, X, y, nb_epochs, batch_size=batch_size, verbose=verbose)
+    train(model, X, y, nb_epochs, batch_size=batch_size, eta=eta, verbose=verbose)
 
     # Today output
     if rebalance_freq == 'M':
@@ -85,6 +89,8 @@ def strat(df_input_all, price, rebalance_freq, model_name='MLP', nb_epochs=50, i
     X = df_input_period.values.reshape(input_period, num_tickers, num_features)
     X = torch.from_numpy(X).float()
     X = X.view(1, X.size(0), X.size(1), X.size(2))
+
+    model.eval()
     out = model(X)
 
     return pd.DataFrame(index=[model_name], columns=price.columns, data=out.cpu().detach().numpy())
@@ -92,16 +98,18 @@ def strat(df_input_all, price, rebalance_freq, model_name='MLP', nb_epochs=50, i
 def run():
     price, _, df_X = get_price_data()
 
-    models_list = ['MLP', 'ConvNet', 'LSTM']
+    # models_list = ['MLP', 'ConvNet', 'LSTM']
+    models_list = ['LSTM']
     output = pd.DataFrame(index=['Ensemble'], columns=price.columns)
 
-    batch_size = 5
+    batch_size = 10
     training_window = 5
-    nb_epochs = 100
-    verbose = 3
+    nb_epochs = 1000
+    verbose = 4
     rebalance_freq = 'W-FRI'
     input_period_days = 15
     input_period_weeks = 8
+    eta = 1e-3
     # input_period = 15
 
     if rebalance_freq == 'M':
@@ -111,18 +119,18 @@ def run():
 
     for i, model_name in enumerate(models_list):
         df_output = strat(df_input_all=df_X, price=price, rebalance_freq=rebalance_freq, 
-                                                                    model_name=model_name, nb_epochs=nb_epochs, 
-                                                                    input_period=input_period, batch_size=batch_size,
-                                                                    training_window=training_window, verbose=verbose)
+                          model_name=model_name, nb_epochs=nb_epochs, 
+                          input_period=input_period, batch_size=batch_size,
+                          training_window=training_window, verbose=verbose, eta=eta)
         output = pd.concat([output, df_output])
         
         if i == 0:
             output.loc['Ensemble'] = output.loc[model_name]
         else:
             output.loc['Ensemble'] += output.loc[model_name]
-    output.loc['Ensemble'] /= 3
-    print(35 * '*')
+    output.loc['Ensemble'] /= len(models_list)
+    print(32 * '*')
     print(output.round(2))
-    print(35 * '*')
+    print(32 * '*')
 if __name__ == "__main__":
     run()

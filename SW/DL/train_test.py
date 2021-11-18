@@ -6,6 +6,7 @@ from torch.utils.data import TensorDataset, DataLoader
 from tqdm import tqdm
 
 def output_to_accu(model, X, y):
+    model.eval()
     nb_errors = 0
     for b in range(0, X.size(0)):
         output = model(X.narrow(0, b, 1))
@@ -18,6 +19,7 @@ def output_to_accu(model, X, y):
 
 
 def output_to_loss(model, X, y):
+    model.eval()
     loss = 0
     criterion = nn.BCELoss()
     for b in range(0, X.size(0)):
@@ -51,9 +53,13 @@ def train(model, X_train, y_train, nb_epochs, X_test=None, y_test=None, i=None, 
             loss.backward()
             optimizer.step()
             
-            if verbose in (1,2):
+            if verbose in (2, 4):
                 acc_loss = acc_loss + loss.item()
-            
+
+        if verbose in (2, 4):
+            if (e % 5) == 0:
+                print('epoch', e + 1, ':', np.round(acc_loss, 4), 'accuracy :', output_to_accu(model, X_train, y_train), '%')
+
         if verbose in (1, 2):
             model.eval()
             train_accu = output_to_accu(model, X_train, y_train)
@@ -65,10 +71,6 @@ def train(model, X_train, y_train, nb_epochs, X_test=None, y_test=None, i=None, 
             train_loss_list.append(train_loss)
             test_loss = output_to_loss(model, X_test, y_test).detach().numpy()
             test_loss_list.append(test_loss)
-             
-            if verbose == 2:
-                if (e % 5) == 0:
-                    print('epoch', e + 1, ':', acc_loss)
                     
     if verbose in (1, 2):
         if i in (0, 1, 2):
@@ -87,7 +89,7 @@ def test(model, X_test, y_test, threshold=None):
     
     pred = np.zeros((X_test.size(0), y_test.size(1)))
     prob = []
-    
+    model.eval()
     for k in range(0, X_test.size(0)):
         output = model(X_test.narrow(0, k, 1))
         prob.append(output.cpu().detach().numpy())

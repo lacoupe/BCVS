@@ -20,6 +20,7 @@ def backtest_strat(df_input_all, price, rebalance_freq, model_name='MLP',
                    batch_size=1, verbose=0, threshold=0.4):
 
     print('Backtesting model : ' + model_name)
+
     first_end_date = '2002-02-01'
     num_tickers = len(df_input_all.columns.get_level_values(0).unique())
     num_features = len(df_input_all.columns.get_level_values(1).unique())
@@ -172,10 +173,10 @@ def run_backtest():
 
     for i, model_name in enumerate(models_list):
         df_pred_dict[model_name], df_prob_dict[model_name] = backtest_strat(df_input_all=df_X, price=price, rebalance_freq=rebalance_freq, 
-                                                                    model_name=model_name, nb_epochs=nb_epochs, 
-                                                                    nb_epochs_first=nb_epochs_first, input_period=input_period, 
-                                                                    batch_size=batch_size, verbose=verbose, 
-                                                                    training_window=training_window, threshold=threshold)
+                                                                            model_name=model_name, nb_epochs=nb_epochs, 
+                                                                            nb_epochs_first=nb_epochs_first, input_period=input_period, 
+                                                                            batch_size=batch_size, verbose=verbose, 
+                                                                            training_window=training_window, threshold=threshold)
         
         if i == 0:
             df_prob_dict['Ensemble'] = df_prob_dict[model_name].copy()
