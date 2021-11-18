@@ -106,7 +106,7 @@ def run():
     batch_size = 10
     training_window = 5
     nb_epochs = 500
-    verbose = 4
+    verbose = 0
     rebalance_freq = 'W-FRI'
     input_period_days = 15
     input_period_weeks = 8
@@ -134,6 +134,6 @@ def run():
     print(32 * '*')
     print(output.round(2))
     print(32 * '*')
-    
+
 if __name__ == "__main__":
     run()
