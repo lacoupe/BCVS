@@ -71,7 +71,6 @@ class LSTM(nn.Module):
         self.num_layers = num_layers
         self.dropout = dropout
         self.device = device
-        
         self.lstm = nn.LSTM(input_size=self.input_size, hidden_size=self.hidden_size, 
                             num_layers=self.num_layers, batch_first=True, dropout=self.dropout)
         self.fc = nn.Linear(hidden_size, output_size)
@@ -82,7 +81,7 @@ class LSTM(nn.Module):
         h0 = torch.randn(self.num_layers, x.size(0), self.hidden_size).to(self.device)
         c0 = torch.randn(self.num_layers, x.size(0), self.hidden_size).to(self.device)
         x = x.view(x.size(0), x.size(1), x.size(2) * x.size(3))
-        x, _ = self.lstm(x, (h0, c0))
+        x, _ = self.lstm(x, (h0.detach(), c0.detach()))
         x = self.relu(x)
         x = self.sigmoid(self.fc(x[:, -1, :]))
         

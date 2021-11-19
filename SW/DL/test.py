@@ -77,7 +77,7 @@ def strat(df_input_all, price, rebalance_freq, model_name='MLP', nb_epochs=50, i
     model.to(device)
 
     train(model, X, y, nb_epochs, batch_size=batch_size, eta=eta, verbose=verbose)
-
+    print(X.device)
     # Today output
     if rebalance_freq == 'M':
         dayofweek = {0:'Monday', 1:'Tuesday', 2:'Wednesday', 3:'Thursday', 4:'Friday', 5:'Saturday', 6:'Sunday'}
@@ -85,8 +85,7 @@ def strat(df_input_all, price, rebalance_freq, model_name='MLP', nb_epochs=50, i
         df_input_period = df_input.loc[:idx].asfreq(reb_freq_input, method='ffill').iloc[-input_period:]
     else:
         df_input_period = df_input_all.iloc[-input_period:]
-
-    print(X.device)
+    
     X = df_input_period.values.reshape(input_period, num_tickers, num_features)
     X = torch.from_numpy(X).float()
     X = X.view(1, X.size(0), X.size(1), X.size(2)).to(device)
@@ -99,14 +98,14 @@ def strat(df_input_all, price, rebalance_freq, model_name='MLP', nb_epochs=50, i
 def run():
     price, _, df_X = get_price_data()
 
-    models_list = ['MLP', 'ConvNet', 'LSTM']
-    # models_list = ['LSTM']
+    # models_list = ['MLP', 'ConvNet', 'LSTM']
+    models_list = ['LSTM']
     output = pd.DataFrame(index=['Ensemble'], columns=price.columns)
 
     batch_size = 10
     training_window = 5
     nb_epochs = 500
-    verbose = 3
+    verbose = 4
     rebalance_freq = 'W-FRI'
     input_period_days = 15
     input_period_weeks = 8
