@@ -129,6 +129,7 @@ def annual_alpha_plot(perf_bench, df_pred, daily_returns):
     plt.xlabel('Year')
     plt.title('Annual Return of the model (gross) over Benchmark Return : ')
     plot_path = os.path.join(os.path.dirname(__file__)) + 'plots/excess_return.png'
+    plt.savefig(plot_path)
     plt.show()
     
     
