@@ -2,7 +2,7 @@ import pandas as pd
 import numpy as np
 import torch
 from dateutil.relativedelta import relativedelta
-from helpers import last_friday, last_month
+from helpers import last_friday, last_month, annual_alpha_plot
 from models import MLP, ConvNet, LSTM
 from train_test import train
 from data import get_price_data
@@ -105,7 +105,7 @@ def run():
     batch_size = 10
     training_window = 5
     nb_epochs = 500
-    verbose = 4
+    verbose = 3
     rebalance_freq = 'W-FRI'
     input_period_days = 15
     input_period_weeks = 8

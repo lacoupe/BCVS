@@ -109,8 +109,6 @@ def test(model, X_test, y_test, threshold=None):
                     pred[k, pred_index.item()] = 1
                 else:
                     pred[k] = pred[k-1]
-                    
-        
 
     return np.array(prob), pred
 

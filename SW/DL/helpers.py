@@ -103,9 +103,9 @@ def annual_alpha_plot_grossnet(perf_bench, df_pred, model, daily_returns):
     plt.show()
     
     
-def annual_alpha_plot(perf_bench, df_pred, model, daily_returns):
+def annual_alpha_plot(perf_bench, df_pred, daily_returns):
     
-    perf_pred_gross = pred_to_perf(df_pred,daily_returns, 0.).rename('Model without transaction costs')
+    perf_pred_gross = pred_to_perf(df_pred, daily_returns, 0.).rename('Model without transaction costs')
     
     year_group_bench = perf_bench.resample('Y')
     year_group_pred_gross = perf_pred_gross.resample('Y')
@@ -126,7 +126,7 @@ def annual_alpha_plot(perf_bench, df_pred, model, daily_returns):
     ax.get_legend().remove()
     plt.ylabel('Alpha (%)')
     plt.xlabel('Year')
-    plt.title('Annual Return of the model (gross) over Benchmark Return : ' + model)
+    plt.title('Annual Return of the model (gross) over Benchmark Return : ')
     plt.show()
     
     

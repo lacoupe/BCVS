@@ -6,8 +6,7 @@ import torch
 from dateutil.relativedelta import relativedelta
 from tqdm import tqdm
 import calendar
-import itertools
-from helpers import resume_backtest
+from helpers import resume_backtest, annual_alpha_plot, price_to_perf
 from models import MLP, ConvNet, LSTM
 from train_test import train, test
 from data import get_price_data
@@ -132,7 +131,7 @@ def backtest_strat(df_input_all, price, rebalance_freq, model_name='MLP',
         else:
             nb_epochs_all = nb_epochs
         # Train the model
-        train(model, X_train, y_train, X_test, y_test, nb_epochs_all, i, batch_size=batch_size, verbose=verbose)
+        train(model, X_train, y_train, nb_epochs_all, X_test, y_test, i, batch_size=batch_size, verbose=verbose)
 
         # Get predictions
         prob, pred = test(model, X_test, y_test, threshold=threshold)
@@ -160,8 +159,8 @@ def run_backtest():
     batch_size = 10
     verbose = 0
     training_window = 5
-    nb_epochs_first = 5
-    nb_epochs = 2
+    nb_epochs_first = 500
+    nb_epochs = 100
     rebalance_freq = 'W-FRI'
     input_period_days = 15
     input_period_weeks = 8
@@ -200,6 +199,10 @@ def run_backtest():
 
     df_resume = resume_backtest(df_pred_dict, bench_price, price)
     print(df_resume)
+
+    daily_returns = price.pct_change()
+    perf_bench = price_to_perf(bench_price.loc[df_pred_dict['Ensemble'].index[0]:df_pred_dict['Ensemble'].index[-1]], log=False)
+    annual_alpha_plot(perf_bench, df_pred_dict['Ensemble'], daily_returns)
 
 if __name__ == "__main__":
     run_backtest()
