@@ -127,7 +127,7 @@ def annual_alpha_plot(perf_bench, df_pred, daily_returns):
     plt.ylabel('Alpha (%)')
     plt.xlabel('Year')
     plt.title('Annual Return of the model (gross) over Benchmark Return : ')
-    plt.savefig('plots/alpha.png', dpi=200)
+    plt.savefig('plots/excess_return.png', dpi=200)
     plt.show()
     
     
