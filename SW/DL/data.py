@@ -1,9 +1,11 @@
 import numpy as np
 import pandas as pd
 from helpers import RSI
+import os, sys
 
 def get_price_data():
-    indices_price_excel = pd.read_csv('data/prices.csv', index_col=0, parse_dates=True)
+    data_path = os.path.join(os.path.dirname(__file__)) + '/data/prices.csv'
+    indices_price_excel = pd.read_csv(data_path, index_col=0, parse_dates=True)
     indices_price_excel.drop(columns=['SMIMC Index'], inplace=True)
     indices_price_excel.head()
     indices_price_excel.columns = ['SPI', 'MID', 'MID_SMALL', 'LARGE']
