@@ -171,6 +171,7 @@ def price_to_perf(df, log=False):
         perf = np.log(1 + df.pct_change().fillna(0)).cumsum()
     return perf
 
+
 def resume_backtest(df_pred_dict, bench_price, price):
 
     daily_returns = price.pct_change()

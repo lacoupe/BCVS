@@ -6,6 +6,8 @@ from helpers import last_friday, last_month, annual_alpha_plot
 from models import MLP, ConvNet, LSTM
 from train_test import train
 from data import get_price_data
+pd.set_option('display.max_columns', None)
+pd.set_option('display.max_rows', None)
 
 # import os, sys
 # sys.path.append(os.path.join(os.path.dirname(__file__)))

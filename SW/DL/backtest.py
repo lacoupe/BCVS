@@ -10,6 +10,8 @@ from helpers import resume_backtest, annual_alpha_plot, price_to_perf
 from models import MLP, ConvNet, LSTM
 from train_test import train, test
 from data import get_price_data
+pd.set_option('display.max_columns', None)
+pd.set_option('display.max_rows', None)
 
 import os
 os.environ['KMP_DUPLICATE_LIB_OK']='True'
@@ -159,8 +161,8 @@ def run_backtest():
     batch_size = 10
     verbose = 0
     training_window = 5
-    nb_epochs_first = 500
-    nb_epochs = 100
+    nb_epochs_first = 1
+    nb_epochs = 1
     rebalance_freq = 'W-FRI'
     input_period_days = 15
     input_period_weeks = 8
