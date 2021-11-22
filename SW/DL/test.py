@@ -64,7 +64,7 @@ def strat(df_input_all, price, rebalance_freq, model_name='MLP', nb_epochs=50, i
     X = X.sub_(train_mean).div_(train_std)
 
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-    print("The device used is", device)
+    
     X = X.to(device)
     y = y.to(device)
 
@@ -79,7 +79,7 @@ def strat(df_input_all, price, rebalance_freq, model_name='MLP', nb_epochs=50, i
     model.to(device)
 
     train(model, X, y, nb_epochs, batch_size=batch_size, eta=eta, verbose=verbose)
-    print(X.device)
+
     # Today output
     if rebalance_freq == 'M':
         dayofweek = {0:'Monday', 1:'Tuesday', 2:'Wednesday', 3:'Thursday', 4:'Friday', 5:'Saturday', 6:'Sunday'}
@@ -91,6 +91,9 @@ def strat(df_input_all, price, rebalance_freq, model_name='MLP', nb_epochs=50, i
     X = df_input_period.values.reshape(input_period, num_tickers, num_features)
     X = torch.from_numpy(X).float()
     X = X.view(1, X.size(0), X.size(1), X.size(2)).to(device)
+    test_mean = X.mean(dim=[0, 1, 2], keepdim=True)
+    test_std = X.std(dim=[0, 1, 2], keepdim=True)
+    X = X.sub_(test_mean).div_(test_std)
 
     model.eval()
     out = model(X)
@@ -100,18 +103,18 @@ def strat(df_input_all, price, rebalance_freq, model_name='MLP', nb_epochs=50, i
 def run():
     price, _, df_X = get_price_data()
 
-    # models_list = ['MLP', 'ConvNet', 'LSTM']
-    models_list = ['ConvNet']
+    models_list = ['MLP', 'ConvNet', 'LSTM']
+    # models_list = ['MLP', 'ConvNet']
     output = pd.DataFrame(index=['Ensemble'], columns=price.columns)
 
     batch_size = 10
     training_window = 5
-    nb_epochs = 1000
+    nb_epochs = 200
     verbose = 4
     rebalance_freq = 'W-FRI'
     input_period_days = 15
     input_period_weeks = 8
-    eta = 5e-3
+    eta = 1e-3
     # input_period = 15
 
     if rebalance_freq == 'M':
@@ -120,6 +123,7 @@ def run():
         input_period = input_period_days
 
     for i, model_name in enumerate(models_list):
+        print(model_name)
         df_output = strat(df_input_all=df_X, price=price, rebalance_freq=rebalance_freq, 
                           model_name=model_name, nb_epochs=nb_epochs, 
                           input_period=input_period, batch_size=batch_size,

@@ -11,7 +11,7 @@ class MLP(nn.Module):
         self.drop = nn.Dropout(pdrop)
         self.relu = nn.ReLU()
         self.sigmoid = nn.Sigmoid()
-        self.softmax = nn.Softmax()
+        self.softmax = nn.Softmax(dim=1)
 
     def forward(self, x):
         x = x.flatten(start_dim=1)
@@ -24,24 +24,24 @@ class MLP(nn.Module):
 
     
 class ConvNet(nn.Module):
-    def __init__(self, dim1, dim2, dim3, dim1_kernel1=2, dim2_kernel1=2, dim1_kernel2=2, dim2_kernel2=2, pdrop=0.3):
+    def __init__(self, dim1, dim2, dim3, dim1_kernel1=2, dim2_kernel1=2, dim1_kernel2=2, dim2_kernel2=2, pdrop=0.2):
         super().__init__()
         
         self.dim1 = dim1
         self.dim2 = dim2
         self.dim3 = dim3
         
-        self.conv1 = nn.Conv3d(1, 4, kernel_size=(dim1_kernel1, dim2_kernel1, dim3))
-        self.conv2 = nn.Conv3d(4, 8, kernel_size=(dim1_kernel2, dim2_kernel2, 1))
+        self.conv1 = nn.Conv3d(1, 8, kernel_size=(dim1_kernel1, dim2_kernel1, dim3))
+        self.conv2 = nn.Conv3d(8, 16, kernel_size=(dim1_kernel2, dim2_kernel2, 1))
         self.pool = nn.MaxPool2d(kernel_size=2)
         
-        self.fc1 = nn.Linear(8 * (dim1 - dim1_kernel1 - dim1_kernel2 + 2) * (dim2 - dim2_kernel1 - dim2_kernel2 + 2), 10)
+        self.fc1 = nn.Linear(16 * (dim1 - dim1_kernel1 - dim1_kernel2 + 2) * (dim2 - dim2_kernel1 - dim2_kernel2 + 2), 10)
         self.fc2 = nn.Linear(10, self.dim2)
         
         self.relu = nn.ReLU()
         self.tanh = nn.Tanh()
         self.sigmoid = nn.Sigmoid()
-        self.softmax = nn.Softmax()
+        self.softmax = nn.Softmax(dim=1)
         self.drop = nn.Dropout(pdrop)
         self.drop2d = nn.Dropout2d(pdrop)
 
@@ -56,8 +56,8 @@ class ConvNet(nn.Module):
         x = x.flatten(start_dim=1)
 
         x = self.relu(self.drop(self.fc1(x)))
-        # x = self.relu(self.drop(self.fc2(x)))
-        x = self.softmax(self.fc2(x))
+        x = self.fc2(x)
+        x = self.softmax(x)
 
         return x
     
@@ -77,7 +77,7 @@ class LSTM(nn.Module):
                             num_layers=self.num_layers, batch_first=True, dropout=self.dropout)
         self.fc = nn.Linear(hidden_size, output_size)
         self.sigmoid = nn.Sigmoid()
-        self.softmax = nn.Softmax()
+        self.softmax = nn.Softmax(dim=1)
         self.relu = nn.ReLU()
         
     def forward(self, x):
