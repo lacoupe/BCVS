@@ -151,8 +151,8 @@ def run_backtest():
 
     price, bench_price, df_X = get_price_data()
 
-    # models_list = ['MLP', 'ConvNet', 'LSTM']
-    models_list = ['MLP', 'ConvNet']
+    models_list = ['MLP', 'ConvNet', 'LSTM']
+    # models_list = ['MLP', 'ConvNet']
     
     df_pred_dict = {}
     df_prob_dict = {}
@@ -161,8 +161,8 @@ def run_backtest():
     batch_size = 10
     verbose = 0
     training_window = 5
-    nb_epochs_first = 1
-    nb_epochs = 1
+    nb_epochs_first = 500
+    nb_epochs = 100
     rebalance_freq = 'W-FRI'
     input_period_days = 15
     input_period_weeks = 8
