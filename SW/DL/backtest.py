@@ -20,9 +20,9 @@ def backtest_strat(df_input_all, price, rebalance_freq, model_name='MLP',
                    nb_epochs=50, nb_epochs_first=200, input_period=8, training_window=5, 
                    batch_size=1, verbose=0, threshold=0.4):
 
-    print('Backtesting model : ' + model_name)
-
+    print('Backtesting model ' + model_name)
     first_end_date = '2002-02-01'
+
     num_tickers = len(df_input_all.columns.get_level_values(0).unique())
     num_features = len(df_input_all.columns.get_level_values(1).unique())
     
@@ -149,6 +149,8 @@ def backtest_strat(df_input_all, price, rebalance_freq, model_name='MLP',
 
 def run_backtest():
 
+    print('GPU available :', torch.cuda.is_available())
+    
     price, bench_price, df_X = get_price_data()
 
     models_list = ['MLP', 'ConvNet', 'LSTM']

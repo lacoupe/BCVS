@@ -101,17 +101,17 @@ def run():
     price, _, df_X = get_price_data()
 
     # models_list = ['MLP', 'ConvNet', 'LSTM']
-    models_list = ['LSTM']
+    models_list = ['ConvNet']
     output = pd.DataFrame(index=['Ensemble'], columns=price.columns)
 
     batch_size = 10
     training_window = 5
-    nb_epochs = 500
-    verbose = 3
+    nb_epochs = 1000
+    verbose = 4
     rebalance_freq = 'W-FRI'
     input_period_days = 15
     input_period_weeks = 8
-    eta = 1e-3
+    eta = 5e-3
     # input_period = 15
 
     if rebalance_freq == 'M':

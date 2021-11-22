@@ -31,7 +31,7 @@ def output_to_loss(model, X, y):
 
 def train(model, X_train, y_train, nb_epochs, X_test=None, y_test=None, i=None, eta=1e-3, batch_size=1, verbose=0):
     
-    optimizer = torch.optim.Adam(model.parameters(), lr=eta)
+    optimizer = torch.optim.Adam(model.parameters(), lr=eta, weight_decay=5e-4)
     criterion = nn.BCELoss()
     model.train()
     
