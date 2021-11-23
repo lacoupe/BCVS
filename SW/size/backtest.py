@@ -35,10 +35,10 @@ def backtest_strat(df_input_all, price, rebalance_freq, model_name='MLP',
     
     if rebalance_freq == 'M':
         # The moving window every 6 month
-        all_end_dates = best_pred.loc[first_end_date:].asfreq('6M', method='ffill').index
+        all_end_dates = best_pred.loc[first_end_date:].asfreq('6M').index
     else:
         # The moving window every 26 weeks
-        all_end_dates = best_pred.loc[first_end_date:].asfreq('W-FRI', method='ffill')[::26].index
+        all_end_dates = best_pred.loc[first_end_date:].asfreq('W-FRI')[::26].index
     
     for i, end_date in enumerate(tqdm(all_end_dates)):
 
