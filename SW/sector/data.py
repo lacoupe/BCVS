@@ -1,50 +1,48 @@
 import numpy as np
 import pandas as pd
-from helpers import RSI
-import os, sys
+import os
+
+from helpers import clean_tickers
 
 def get_price_data():
-    data_path = os.path.join(os.path.dirname(__file__)) + '/data/prices.csv'
-    indices_price_excel = pd.read_csv(data_path, index_col=0, parse_dates=True)
-    indices_price_excel.drop(columns=['SMIMC Index'], inplace=True)
-    indices_price_excel.head()
-    indices_price_excel.columns = ['SPI', 'MID', 'MID_SMALL', 'LARGE']
 
-    bench_price = indices_price_excel['SPI']
-    price = indices_price_excel[indices_price_excel.columns[1:]]
+    file_path = os.path.join(os.path.dirname(__file__))
+    indice_weight_path = file_path + '/data/Insurances.xlsx'
+    indice_weight = pd.read_excel(indice_weight_path, sheet_name='raw_weight', skiprows=[1], index_col=0, parse_dates=True)
+    indice_weight.drop(columns=indice_weight.columns[0], inplace=True)
+    indice_weight.index.name = 'Date'
+    indice_weight = indice_weight.T
+    indice_weight.index = pd.to_datetime(indice_weight.index, format='%m/%d/%Y')
+    indice_weight = indice_weight / 100
+    indice_weight.replace(0, np.nan, inplace=True)
+    clean_tickers(indice_weight)
 
-    mom12 = price.pct_change(periods=21 * 12)
-    mom6 = price.pct_change(periods=21 * 6)
-    mom1 = price.pct_change(periods=21 * 1)
+    prices_path = file_path + '/data/Insurances.xlsx'
+    prices = pd.read_excel(prices_path, sheet_name='performance', skiprows=[0,1,2,4,5,6], index_col=0)
+    daily_returns = prices.pct_change().shift(1).fillna(0)
+    clean_tickers(daily_returns)
+    daily_returns = daily_returns[indice_weight.columns]
 
-    ma200 = np.log(price / price.rolling(window=200).mean())
-    ma100 = np.log(price / price.rolling(window=100).mean())
-    ma50 = np.log(price / price.rolling(window=50).mean())
+    monthly_returns = daily_returns.shift(1).resample('M').agg(lambda x: (x + 1).prod() - 1)
+    max_ret = np.zeros_like(monthly_returns.values)
+    max_ret[np.arange(len(max_ret)), monthly_returns.values.argmax(1)] = 1
+    best_pred = pd.DataFrame(max_ret, columns=monthly_returns.columns, index=monthly_returns.index).astype(int).shift(-1)
 
-    vol12 = price.rolling(window=21 * 12).std()
-    vol6 = price.rolling(window=21 * 6).std()
-    vol1 = price.rolling(window=21 * 1).std()
+    ratios_path = file_path + '/data/ratio_data.xlsx'
+    all_ratios = pd.read_excel(ratios_path, sheet_name=None, skiprows=[0,1,2,4,5], parse_dates=True, index_col=0)
 
-    ema_12 = price.ewm(span=10).mean()
-    ema_26 = price.ewm(span=60).mean()
-    MACD = ema_12 - ema_26
+    df_input = pd.concat(all_ratios, axis=1)
+    df_input = df_input.swaplevel(0, 1, 1).sort_index(axis=1).fillna(method='ffill').shift(1).fillna(0)
+    clean_tickers(df_input, ratio=True)
+    new_cols = df_input.columns.reindex(indice_weight.columns, level=0)
+    df_input = df_input.reindex(columns=new_cols[0])
 
-    RSI14 = RSI(price, 14)
-    RSI9 = RSI(price, 9)
-    RSI3 = RSI(price, 3)
+    tickers_name = ['BALOISE', 'GENERALI', 'HELVETIA', 'SCHWEIZERISCHE', 'SCOR', 'SWISS LIFE', 'SWISS REINSURANCE', 'VAUDOISE ASSURANCE', 'ZURICH INSURANCE', 'SWISS RE']
+    indice_weight.columns = tickers_name
+    daily_returns.columns = tickers_name
+    best_pred.columns = tickers_name
+    
+    df_input.columns = df_input.columns.set_levels(tickers_name, level=0)
 
-    df_dict = {}
-    df_input = pd.DataFrame()
-    for col in price.columns:
-        df_temp = pd.concat([ma50[col], ma100[col], ma200[col],
-                            mom12[col], mom6[col], mom1[col],
-                            vol12[col], vol6[col], vol1[col],
-                            RSI14[col], RSI9[col], RSI3[col], 
-                            MACD[col]], axis=1).loc['1997-01-01':].fillna(method='ffill')
-        df_temp.columns = ['ma50', 'ma100', 'ma200', 'mom12', 'mom6', 'mom1', 
-                        'vol12', 'vol6', 'vol1', 'RSI14', 'RSI9', 'MACD', 'RSI3']
-        df_dict[col] = df_temp
-        
-    df_input = pd.concat(df_dict, axis=1)
 
-    return price, bench_price, df_input
+    return indice_weight, daily_returns, best_pred, df_input

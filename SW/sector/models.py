@@ -3,7 +3,7 @@ from torch import nn
 
 
 class MLP(nn.Module):
-    def __init__(self, dim1, dim2, dim3, pdrop=0.3):
+    def __init__(self, dim1, dim2, dim3, pdrop=0.2):
         super().__init__()
         self.fc1 = nn.Linear(dim1 * dim2 * dim3, 20)
         self.fc2 = nn.Linear(20, 10)

@@ -29,10 +29,10 @@ def output_to_loss(model, X, y):
     return loss
 
 
-def train(model, X_train, y_train, nb_epochs, X_test=None, y_test=None, i=None, eta=1e-3, weight_decay=None, batch_size=1, verbose=0):
+def train(model, X_train, y_train, nb_epochs, X_test=None, y_test=None, i=None, eta=1e-3, weight_decay=1e-6, batch_size=1, verbose=0):
     
     
-    optimizer = torch.optim.Adam(model.parameters(), lr=eta, weight_decay=1e-5)
+    optimizer = torch.optim.Adam(model.parameters(), lr=eta, weight_decay=weight_decay)
     criterion = nn.BCELoss()
     model.train()
     
@@ -87,31 +87,15 @@ def train(model, X_train, y_train, nb_epochs, X_test=None, y_test=None, i=None, 
             plt.show()
 
             
-def test(model, X_test, y_test, threshold=None):
-    
-    pred = np.zeros((X_test.size(0), y_test.size(1)))
+def test(model, X_test):
+
     prob = []
     model.eval()
     for k in range(0, X_test.size(0)):
         output = model(X_test.narrow(0, k, 1))
         prob.append(output.cpu().detach().numpy())
 
-        if threshold is None:
-            _, pred_index = output.max(1)
-            pred[k, pred_index.item()] = 1
-            
-        else:
-            if k == 0:
-                _, pred_index = output.max(1)
-                pred[k, pred_index.item()] = 1
-            else:
-                out, pred_index = output.max(1)
-                if out > threshold:
-                    pred[k, pred_index.item()] = 1
-                else:
-                    pred[k] = pred[k-1]
-
-    return np.array(prob), pred
+    return np.array(prob)
 
     
     

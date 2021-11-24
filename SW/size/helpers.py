@@ -66,8 +66,8 @@ def performance_plot(df_pred, model, daily_returns, bench_price):
     plt.title(model, fontsize=14, fontweight='bold')
     sns.lineplot(data=data.rolling(20).mean(), dashes=False)
     plt.show()
-    
-    
+
+
 def turnover(df_pred):
     return (df_pred.diff().fillna(0) != 0).any(axis=1).astype(int).sum()
 
@@ -102,8 +102,8 @@ def annual_alpha_plot_grossnet(perf_bench, df_pred, model, daily_returns):
     plt.xlabel('Year')
     plt.title('Annual Return of the model over Benchmark Return : ' + model)
     plt.show()
-    
-    
+
+
 def annual_alpha_plot(perf_bench, df_pred, daily_returns):
     
     perf_pred_gross = pred_to_perf(df_pred, daily_returns, 0.).rename('Model without transaction costs')
@@ -131,8 +131,8 @@ def annual_alpha_plot(perf_bench, df_pred, daily_returns):
     plot_path = os.path.join(os.path.dirname(__file__)) + '/plots/excess_return.png'
     plt.savefig(plot_path)
     plt.show()
-    
-    
+
+
 def correlation(df_pred1, df_pred2):
     nb_match = 0
     L = len(df_pred1)
