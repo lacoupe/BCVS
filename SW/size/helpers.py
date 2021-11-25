@@ -37,12 +37,9 @@ def RSI(price, window):
     return rsi
 
 def perf_to_stat(perf_gross, perf_net):
-    
-    year_group_gross = perf_gross.resample('Y')
-    year_group_net = perf_net.resample('Y')
 
-    average_year_return_gross = ((year_group_gross.last() - year_group_gross.first()) / year_group_gross.first()).mean() * 100
-    average_year_return_net = ((year_group_net.last() - year_group_net.first()) / year_group_net.first()).mean() * 100
+    average_year_return_gross = perf_gross.resample('Y').apply(lambda x: (x[-1] - x[0]) / x[0]).mean() * 100
+    average_year_return_net = perf_net.resample('Y').apply(lambda x: (x[-1] - x[0]) / x[0]).mean() * 100
 
     average_year_std = perf_gross.pct_change().std() * np.sqrt(256) * 100
     average_year_sharpe = average_year_return_net / average_year_std
@@ -55,16 +52,19 @@ def perf_to_stat(perf_gross, perf_net):
     return [average_year_return_gross, average_year_return_net, average_year_std, average_year_sharpe, max_daily_dd]
 
 
-def performance_plot(df_pred, model, daily_returns, bench_price):
-    perf_pred_gross = pred_to_perf(df_pred, daily_returns, 0., log=True).rename('Model without transaction costs')
-    perf_pred_net = pred_to_perf(df_pred, daily_returns, 0.0012, log=True).rename('Model with transaction costs')
+def performance_plot(df_pred_dict, daily_returns, perf_bench):
+    tax = 0.0012
 
-    data = pd.concat([perf_pred_gross, perf_pred_net, 
-                      price_to_perf(bench_price[df_pred.index[0]:df_pred.index[-1]], log=True)], axis=1)
+    plt.figure(figsize=(14,6))
+    for model_name in df_pred_dict:
+        perf_pred_net = pred_to_perf(df_pred_dict[model_name], daily_returns, tax, log=False)
+        sns.lineplot(data=perf_pred_net.rolling(20).mean(), dashes=False, label=model_name)
 
-    fig = plt.figure(figsize=(14,6))
-    plt.title(model, fontsize=14, fontweight='bold')
-    sns.lineplot(data=data.rolling(20).mean(), dashes=False)
+    sns.lineplot(data=perf_bench.rolling(20).mean(), dashes=False, label='Benchmark')
+    plt.legend(loc='best')
+    plt.xlabel(None)
+    plot_path = os.path.join(os.path.dirname(__file__)) + '/plots/performance.png'
+    plt.savefig(plot_path)
     plt.show()
 
 
@@ -72,62 +72,28 @@ def turnover(df_pred):
     return (df_pred.diff().fillna(0) != 0).any(axis=1).astype(int).sum()
 
 
-def annual_alpha_plot_grossnet(perf_bench, df_pred, model, daily_returns):
-    perf_pred_gross = pred_to_perf(df_pred, daily_returns,  0.).rename('Model without transaction costs')
-    perf_pred_net = pred_to_perf(df_pred, daily_returns, 0.0012).rename('Model with transaction costs')
-
-    year_group_bench = perf_bench.resample('Y')
-    year_group_pred_gross = perf_pred_gross.resample('Y')
-    year_group_pred_net = perf_pred_net.resample('Y')
-
-    annual_returns_bench = (year_group_bench.last() - year_group_bench.first()) / year_group_bench.first()
-    annual_returns_pred_gross = (year_group_pred_gross.last() - year_group_pred_gross.first()) / year_group_pred_gross.first()
-    annual_returns_pred_net = (year_group_pred_net.last() - year_group_pred_net.first()) / year_group_pred_net.first()
-
-    annual_diff_gross = (annual_returns_pred_gross - annual_returns_bench) * 100
-    annual_diff_net = (annual_returns_pred_net - annual_returns_bench) * 100
-
-    df_annual_diff = pd.DataFrame(columns=['year', 'gross', 'net'])
-    df_annual_diff['year'] = annual_diff_net.index.year
-    df_annual_diff['year'] = df_annual_diff.year.apply(str)
-    df_annual_diff['gross'] = annual_diff_gross.values
-    df_annual_diff['net'] = annual_diff_net.values
-    df_annual_diff = df_annual_diff.melt(id_vars=['year'], var_name='gross_net', value_name='alpha')
-    df_annual_diff['sign'] = np.sign(df_annual_diff.alpha)
-
-    fig, ax = plt.subplots(figsize=(14,6))
-    sns.barplot(data=df_annual_diff, x='year', y='alpha', hue='gross_net', dodge=True)
-    ax.get_legend().set_title(None)
-    plt.ylabel('Alpha (%)')
-    plt.xlabel('Year')
-    plt.title('Annual Return of the model over Benchmark Return : ' + model)
-    plt.show()
-
 
 def annual_alpha_plot(perf_bench, df_pred, daily_returns):
     
-    perf_pred_gross = pred_to_perf(df_pred, daily_returns, 0.).rename('Model without transaction costs')
-    
-    year_group_bench = perf_bench.resample('Y')
-    year_group_pred_gross = perf_pred_gross.resample('Y')
-    
-    annual_returns_bench = (year_group_bench.last() - year_group_bench.first()) / year_group_bench.first()
-    annual_returns_pred_gross = (year_group_pred_gross.last() - year_group_pred_gross.first()) / year_group_pred_gross.first()
+    tax = 0.0012
+    perf_pred = pred_to_perf(df_pred, daily_returns,  tax)
 
-    annual_diff_gross = (annual_returns_pred_gross - annual_returns_bench) * 100
-    
-    df_annual_diff = pd.DataFrame(columns=['year', 'alpha_gross'])
-    df_annual_diff['year'] = annual_diff_gross.index.year
+    annual_returns_bench = perf_bench.resample('Y').apply(lambda x: (x[-1] - x[0]) / x[0])
+    annual_returns_pred = perf_pred.resample('Y').apply(lambda x: (x[-1] - x[0]) / x[0])
+
+    annual_diff = (annual_returns_pred - annual_returns_bench) * 100
+    df_annual_diff = pd.DataFrame(columns=['year', 'alpha'])
+    df_annual_diff['year'] = annual_diff.index.year
     df_annual_diff['year'] = df_annual_diff.year.apply(str)
-    df_annual_diff['alpha_gross'] = annual_diff_gross.values
-    df_annual_diff['sign_gross'] = np.sign(df_annual_diff.alpha_gross)
+    df_annual_diff['alpha'] = annual_diff.values
+    df_annual_diff['sign'] = np.sign(df_annual_diff.alpha)
 
-    fig, ax = plt.subplots(figsize=(14,6))
-    sns.barplot(data=df_annual_diff, x='year', y='alpha_gross', hue='sign_gross', dodge=False)
+    _, ax = plt.subplots(figsize=(14,6))
+    sns.barplot(data=df_annual_diff, x='year', y='alpha', hue='sign', dodge=False)
     ax.get_legend().remove()
     plt.ylabel('Alpha (%)')
     plt.xlabel('Year')
-    plt.title('Annual Return of the model (gross) over Benchmark Return : ')
+    plt.title('Annual Return of the model (net of tax) over Benchmark Return : ')
     plot_path = os.path.join(os.path.dirname(__file__)) + '/plots/excess_return.png'
     plt.savefig(plot_path)
     plt.show()
@@ -188,7 +154,7 @@ def resume_backtest(df_pred_dict, bench_price, price):
         perf_net = pred_to_perf(df_pred_dict[model_name], daily_returns, 0.0012)
         
         turnover_num = turnover(df_pred_dict[model_name])
-        stats.append(perf_to_stat(perf_gross, perf_net) + [turnover(df_pred_dict[model_name])])
+        stats.append(perf_to_stat(perf_gross, perf_net) + [turnover_num])
     stats = np.array(stats)
 
     df_stats = pd.DataFrame(data=stats, columns=['Gross avg. annual return (%)', 'Net avg. annual return (%)', 
@@ -199,3 +165,36 @@ def resume_backtest(df_pred_dict, bench_price, price):
     df_stats.Turnover = df_stats.Turnover.apply(int)
 
     return df_stats
+
+
+
+# def annual_alpha_plot_grossnet(perf_bench, df_pred, model, daily_returns):
+#     perf_pred_gross = pred_to_perf(df_pred, daily_returns,  0.).rename('Model without transaction costs')
+#     perf_pred_net = pred_to_perf(df_pred, daily_returns, 0.0012).rename('Model with transaction costs')
+
+#     year_group_bench = perf_bench.resample('Y')
+#     year_group_pred_gross = perf_pred_gross.resample('Y')
+#     year_group_pred_net = perf_pred_net.resample('Y')
+
+#     annual_returns_bench = (year_group_bench.last() - year_group_bench.first()) / year_group_bench.first()
+#     annual_returns_pred_gross = (year_group_pred_gross.last() - year_group_pred_gross.first()) / year_group_pred_gross.first()
+#     annual_returns_pred_net = (year_group_pred_net.last() - year_group_pred_net.first()) / year_group_pred_net.first()
+
+#     annual_diff_gross = (annual_returns_pred_gross - annual_returns_bench) * 100
+#     annual_diff_net = (annual_returns_pred_net - annual_returns_bench) * 100
+
+#     df_annual_diff = pd.DataFrame(columns=['year', 'gross', 'net'])
+#     df_annual_diff['year'] = annual_diff_net.index.year
+#     df_annual_diff['year'] = df_annual_diff.year.apply(str)
+#     df_annual_diff['gross'] = annual_diff_gross.values
+#     df_annual_diff['net'] = annual_diff_net.values
+#     df_annual_diff = df_annual_diff.melt(id_vars=['year'], var_name='gross_net', value_name='alpha')
+#     df_annual_diff['sign'] = np.sign(df_annual_diff.alpha)
+
+#     fig, ax = plt.subplots(figsize=(14,6))
+#     sns.barplot(data=df_annual_diff, x='year', y='alpha', hue='gross_net', dodge=True)
+#     ax.get_legend().set_title(None)
+#     plt.ylabel('Alpha (%)')
+#     plt.xlabel('Year')
+#     plt.title('Annual Return of the model over Benchmark Return : ' + model)
+#     plt.show()

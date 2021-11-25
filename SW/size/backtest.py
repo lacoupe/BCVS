@@ -6,12 +6,12 @@ import torch
 from dateutil.relativedelta import relativedelta
 from tqdm import tqdm
 import calendar
-from helpers import resume_backtest, annual_alpha_plot, price_to_perf
+from helpers import performance_plot, resume_backtest, annual_alpha_plot, price_to_perf, last_month, next_friday
 from models import MLP, ConvNet, LSTM
 from train_test import train, test
 from data import get_price_data
 pd.set_option('display.max_columns', None)
-pd.set_option('display.max_rows', None)
+pd.set_option('display.width', 200)
 
 import os
 os.environ['KMP_DUPLICATE_LIB_OK']='True'
@@ -21,23 +21,25 @@ def backtest_strat(df_input_all, price, rebalance_freq, model_name='MLP',
                    batch_size=1, verbose=0, threshold=0.4):
 
     print('Backtesting model ' + model_name)
-    first_end_date = '2002-02-01'
+    # first_end_date = '2002-02-01'
 
     num_tickers = len(df_input_all.columns.get_level_values(0).unique())
     num_features = len(df_input_all.columns.get_level_values(1).unique())
     
     # Target data
     returns = price.pct_change().shift(1).resample(rebalance_freq).agg(lambda x: (x + 1).prod() - 1)
-    best_pred = returns.rank(axis=1).replace({1: 0., 2: 0., 3: 1.}).shift(-1).loc['1997-01-31':]
+    best_pred = returns.rank(axis=1).replace({1: 0., 2: 0., 3: 1.}).shift(-1)
     
     prob_output = []
     pred_output = []
     
     if rebalance_freq == 'M':
         # The moving window every 6 month
+        first_end_date = last_month(df_input_all.index[0] + relativedelta(years=training_window) + relativedelta(weeks=input_period))
         all_end_dates = best_pred.loc[first_end_date:].asfreq('6M').index
     else:
         # The moving window every 26 weeks
+        first_end_date = next_friday(df_input_all.index[0] + relativedelta(years=training_window) + relativedelta(days=input_period))
         all_end_dates = best_pred.loc[first_end_date:].asfreq('W-FRI')[::26].index
     
     for i, end_date in enumerate(tqdm(all_end_dates)):
@@ -163,9 +165,9 @@ def run_backtest():
     batch_size = 10
     verbose = 0
     training_window = 5
-    nb_epochs_first = 500
-    nb_epochs = 100
-    rebalance_freq = 'W-FRI'
+    nb_epochs_first = 2
+    nb_epochs = 1
+    rebalance_freq = 'M'
     input_period_days = 15
     input_period_weeks = 8
 
@@ -206,6 +208,7 @@ def run_backtest():
 
     daily_returns = price.pct_change()
     perf_bench = price_to_perf(bench_price.loc[df_pred_dict['Ensemble'].index[0]:df_pred_dict['Ensemble'].index[-1]], log=False)
+    performance_plot(df_pred_dict, daily_returns, perf_bench)
     annual_alpha_plot(perf_bench, df_pred_dict['Ensemble'], daily_returns)
 
 if __name__ == "__main__":

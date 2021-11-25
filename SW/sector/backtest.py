@@ -4,7 +4,7 @@ import torch
 from dateutil.relativedelta import relativedelta
 from tqdm import tqdm
 import calendar
-from helpers import prob_to_perf, resume_backtest, last_month
+from helpers import annual_alpha_plot, performance_plot, prob_to_perf, resume_backtest, last_month
 from models import MLP, ConvNet, LSTM
 from train_test import train, test
 from data import get_price_data
@@ -19,7 +19,9 @@ def backtest_strat(df_input_all, best_pred, model_name='MLP',
                    batch_size=1, verbose=0, eta=1e-3):
 
     print('Backtesting model ' + model_name)
-    first_end_date = '2012-01-31'
+    
+    first_end_date = last_month(df_input_all.index[0] + relativedelta(years=training_window) + relativedelta(months=input_period))
+
     num_tickers = len(df_input_all.columns.get_level_values(0).unique())
     num_features = len(df_input_all.columns.get_level_values(1).unique())
 
@@ -135,27 +137,16 @@ def run_backtest():
             df_prob_dict['Ensemble'] = df_prob_dict[model_name].copy()
         else:
             df_prob_dict['Ensemble'] += df_prob_dict[model_name]
-    
-    
-    # df_perf_dict = {}
-    # for model_name in df_prob_dict:
-    #     df_perf_dict[model_name] = prob_to_perf(df_prob_dict[model_name])
 
     daily_returns_backtest = daily_returns.loc[df_prob_dict['Ensemble'].index[0]:df_prob_dict['Ensemble'].index[-1]]
     bench_perf = (indice_weight.reindex(daily_returns_backtest.index, method='ffill').mul(daily_returns_backtest).sum(axis=1) + 1).cumprod()
-    ensemble_perf = prob_to_perf(df_prob_dict['Ensemble'], indice_weight, daily_returns)
-    # print('prob_dict', df_prob_dict['Ensemble'].head())
-    # print('perf', ensemble_perf.head())
+
     print(145 * '*')
     print(resume_backtest(df_prob_dict, bench_perf, daily_returns, indice_weight))
     print(145 * '*')
-    # perf = prob_to_perf
-    # data_plot = pd.concat([perf, bench_perf], axis=1)
-    # data_plot.columns = ['Strategie', 'Benchmark']
 
-    # fig, ax = plt.subplots(figsize=(16,6))
-    # sns.lineplot(data=data_plot.rolling(10).mean(), dashes=False)
-    # plt.show()
+    performance_plot(df_prob_dict, daily_returns, indice_weight, bench_perf)
+    annual_alpha_plot(df_prob_dict['Ensemble'], daily_returns, indice_weight, bench_perf)
 
 if __name__ == "__main__":
     run_backtest()
