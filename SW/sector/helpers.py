@@ -61,12 +61,11 @@ def prob_to_portfolio(df_prob, indice_weight):
     return portfolio
 
 
-def prob_to_perf(df_prob, indice_weight, daily_returns, tax=0., log=False):
-
+def prob_to_perf(df_prob, indice_weight, daily_returns, tax=0.0006, log=False):
     portfolio = prob_to_portfolio(df_prob, indice_weight)
     daily_returns_backtest = daily_returns.loc[portfolio.index[0]:portfolio.index[-1]]
     perf = portfolio.reindex(daily_returns_backtest.index, method='ffill').mul(daily_returns_backtest).sum(axis=1)
-    df_cost = (portfolio.reindex(daily_returns_backtest.index, method='ffill').diff().fillna(0) != 0).any(axis=1).astype(int) * tax
+    df_cost = (portfolio.reindex(daily_returns_backtest.index, method='ffill').diff().fillna(0) != 0).astype(int).abs().sum(axis=1) * tax
 
     if log is False:
         perf = (1 + perf - df_cost).cumprod()
@@ -113,7 +112,7 @@ def perf_to_stat(perf_gross, perf_net):
 
 
 def performance_plot(df_prob_dict, daily_returns, indice_weight, perf_bench):
-    tax = 0.0012
+    tax = 0.0006
     plt.figure(figsize=(14,6))
     for model_name in df_prob_dict:
         perf_pred_net = prob_to_perf(df_prob_dict[model_name], indice_weight, daily_returns, tax, log=False)
@@ -132,7 +131,7 @@ def turnover(df_prob, indice_weight):
 
 
 def annual_alpha_plot(df_prob, daily_returns, indice_weight, perf_bench):
-    tax = 0.0012
+    tax = 0.0006
     perf_pred = prob_to_perf(df_prob, daily_returns, indice_weight,  tax)
 
     annual_returns_bench = perf_bench.resample('Y').apply(lambda x: (x[-1] - x[0]) / x[0])
