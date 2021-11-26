@@ -45,6 +45,6 @@ def get_price_data():
                         'vol12', 'vol6', 'vol1', 'RSI14', 'RSI9', 'MACD', 'RSI3']
         df_dict[col] = df_temp
         
-    df_input = pd.concat(df_dict, axis=1)
+    df_input = pd.concat(df_dict, axis=1).shift(1)
 
     return price, bench_price, df_input

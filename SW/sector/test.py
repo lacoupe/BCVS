@@ -8,6 +8,7 @@ from train_test import train
 from data import get_price_data
 pd.set_option('display.max_columns', None)
 pd.set_option('display.width', 200)
+import pdb
 
 # import os, sys
 # sys.path.append(os.path.join(os.path.dirname(__file__)))
@@ -26,7 +27,6 @@ def strat(df_input_all, best_pred, model_name='MLP',
 
     df_output = best_pred.loc[start_date:].dropna()
     df_input = df_input_all.loc[start_date_input:df_output.index[-1]]
-    
     X = []
     for idx in df_output.index:
         df_input_period = df_input.loc[:idx].asfreq('M', method='ffill').iloc[-input_period:]

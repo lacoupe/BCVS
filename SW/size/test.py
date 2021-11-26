@@ -25,7 +25,7 @@ def strat(df_input_all, price, rebalance_freq, model_name='MLP', nb_epochs=50, i
     num_features = len(df_input_all.columns.get_level_values(1).unique())
 
     # Target data
-    returns = price[:last_date_train].pct_change().shift(1).resample(rebalance_freq, convention='end').agg(lambda x: (x + 1).prod() - 1)
+    returns = price[:last_date_train].pct_change().shift(1).resample(rebalance_freq).agg(lambda x: (x + 1).prod() - 1)
     best_pred = returns.rank(axis=1).replace({1: 0., 2: 0., 3: 1.}).shift(-1)
 
     if rebalance_freq == 'M':
@@ -48,13 +48,14 @@ def strat(df_input_all, price, rebalance_freq, model_name='MLP', nb_epochs=50, i
         if rebalance_freq == 'M':
             dayofweek = {0:'Monday', 1:'Tuesday', 2:'Wednesday', 3:'Thursday', 4:'Friday', 5:'Saturday', 6:'Sunday'}
             reb_freq_input = 'W-' + dayofweek[df_input_all.index[-1].weekday()][:3].upper()
-            df_input_period = df_input.loc[:idx].asfreq(reb_freq_input, method='ffill').iloc[-input_period:]
+            df_input_period = df_input.loc[:idx].resample(reb_freq_input).mean().iloc[-input_period:]
         # If we rebalance weekly, the input data will be daily data
         else:
             df_input_period = df_input.loc[:idx].iloc[-input_period:]
             
         X_period = df_input_period.values.reshape(input_period, num_tickers, num_features)
         X.append(X_period)
+        
     X = np.array(X)
     y = df_output.values
     X, y = torch.from_numpy(X).float(), torch.from_numpy(y).float()
@@ -84,10 +85,10 @@ def strat(df_input_all, price, rebalance_freq, model_name='MLP', nb_epochs=50, i
     if rebalance_freq == 'M':
         dayofweek = {0:'Monday', 1:'Tuesday', 2:'Wednesday', 3:'Thursday', 4:'Friday', 5:'Saturday', 6:'Sunday'}
         reb_freq_input = 'W-' + dayofweek[df_input_all.index[-1].weekday()][:3].upper()
-        df_input_period = df_input.loc[:idx].asfreq(reb_freq_input, method='ffill').iloc[-input_period:]
+        df_input_period = df_input.loc[:idx].resample(reb_freq_input).mean().iloc[-input_period:]
     else:
         df_input_period = df_input_all.iloc[-input_period:]
-    
+
     X = df_input_period.values.reshape(input_period, num_tickers, num_features)
     X = torch.from_numpy(X).float()
     X = X.view(1, X.size(0), X.size(1), X.size(2)).to(device)
@@ -110,7 +111,7 @@ def run():
     batch_size = 10
     training_window = 5
     nb_epochs = 200
-    verbose = 4
+    verbose = 3
     rebalance_freq = 'W-FRI'
     input_period_days = 15
     input_period_weeks = 8

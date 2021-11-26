@@ -143,7 +143,7 @@ def price_to_perf(df, log=False):
 
 def resume_backtest(df_pred_dict, bench_price, price):
 
-    daily_returns = price.pct_change()
+    daily_returns = price.pct_change().shift(1)
     perf_bench = price_to_perf(bench_price.loc[next(iter(df_pred_dict.items()))[1].index[0]:next(iter(df_pred_dict.items()))[1].index[-1]], log=False)
 
     bench_stats = perf_to_stat(perf_bench, perf_bench)

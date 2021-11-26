@@ -3,7 +3,6 @@ import pandas as pd
 import os
 
 from helpers import clean_tickers
-
 def get_price_data():
 
     file_path = os.path.join(os.path.dirname(__file__))
@@ -23,16 +22,17 @@ def get_price_data():
     clean_tickers(daily_returns)
     daily_returns = daily_returns[indice_weight.columns]
 
-    monthly_returns = daily_returns.shift(1).resample('M').agg(lambda x: (x + 1).prod() - 1)
+    monthly_returns = daily_returns.resample('M').agg(lambda x: (x + 1).prod() - 1)
     max_ret = np.zeros_like(monthly_returns.values)
     max_ret[np.arange(len(max_ret)), monthly_returns.values.argmax(1)] = 1
     best_pred = pd.DataFrame(max_ret, columns=monthly_returns.columns, index=monthly_returns.index).astype(int).shift(-1)
 
     ratios_path = file_path + '/data/ratio_data.xlsx'
     all_ratios = pd.read_excel(ratios_path, sheet_name=None, skiprows=[0,1,2,4,5], parse_dates=True, index_col=0)
-
+    for ratio in all_ratios:
+        all_ratios[ratio] = all_ratios[ratio].shift(1)
     df_input = pd.concat(all_ratios, axis=1)
-    df_input = df_input.swaplevel(0, 1, 1).sort_index(axis=1).fillna(method='ffill').shift(1).fillna(0)
+    df_input = df_input.swaplevel(0, 1, 1).sort_index(axis=1).fillna(method='ffill').fillna(0)
     clean_tickers(df_input, ratio=True)
     new_cols = df_input.columns.reindex(indice_weight.columns, level=0)
     df_input = df_input.reindex(columns=new_cols[0])

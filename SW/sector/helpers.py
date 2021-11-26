@@ -58,7 +58,7 @@ def prob_to_portfolio(df_prob, indice_weight):
     df_signal = prob_to_signal(df_prob, indice_weight)
     indice_weight = indice_weight.reindex(df_prob.index, method='ffill')
     portfolio = indice_weight + df_signal
-    return portfolio
+    return portfolio.shift(1)
 
 
 def prob_to_perf(df_prob, indice_weight, daily_returns, tax=0.0006, log=False):
@@ -153,3 +153,4 @@ def annual_alpha_plot(df_prob, daily_returns, indice_weight, perf_bench):
     plot_path = os.path.join(os.path.dirname(__file__)) + '/plots/excess_return.png'
     plt.savefig(plot_path)
     plt.show()
+    

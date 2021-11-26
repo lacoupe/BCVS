@@ -45,7 +45,7 @@ def backtest_strat(df_input_all, price, rebalance_freq, model_name='MLP',
     for i, end_date in enumerate(tqdm(all_end_dates)):
 
         start_date = end_date - relativedelta(years=training_window)
-        
+
         # The first date input must before the first date output
         if rebalance_freq =='M':
             # Make sur the input period start the 1st of the month
@@ -62,7 +62,7 @@ def backtest_strat(df_input_all, price, rebalance_freq, model_name='MLP',
         for idx in df_output.index:
             # If we rebalance monthly, the input data will be weekly data
             if rebalance_freq == 'M':
-                df_input_period = df_input.loc[:idx].asfreq('W', method='ffill').iloc[-input_period:]
+                df_input_period = df_input.loc[:idx].resample('W').mean().iloc[-input_period:]
             # If we rebalance weekly, the input data will be daily data
             else:
                 df_input_period = df_input.loc[:idx].iloc[-input_period:]
@@ -206,7 +206,7 @@ def run_backtest():
     df_resume = resume_backtest(df_pred_dict, bench_price, price)
     print(df_resume)
 
-    daily_returns = price.pct_change()
+    daily_returns = price.pct_change().shift(1)
     perf_bench = price_to_perf(bench_price.loc[df_pred_dict['Ensemble'].index[0]:df_pred_dict['Ensemble'].index[-1]], log=False)
     performance_plot(df_pred_dict, daily_returns, perf_bench)
     annual_alpha_plot(perf_bench, df_pred_dict['Ensemble'], daily_returns)
