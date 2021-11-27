@@ -1,7 +1,18 @@
 import numpy as np
 import pandas as pd
-from helpers import RSI
-import os, sys
+import os
+
+
+def RSI(price, window):
+    price_diff = price.diff()
+    gain = price_diff.mask(price_diff < 0, 0.0)
+    loss = - price_diff.mask(price_diff > 0, -0.0)
+    avg_gain = gain.rolling(window=window).mean()
+    avg_loss = loss.rolling(window=window).mean()
+    rs = avg_gain / avg_loss
+    rsi = 1 - 1 / (1 + rs)
+    return rsi.fillna(0)
+
 
 def get_price_data():
     data_path = os.path.join(os.path.dirname(__file__)) + '/data/prices.csv'
@@ -11,7 +22,7 @@ def get_price_data():
     indices_price_excel.columns = ['SPI', 'MID', 'MID_SMALL', 'LARGE']
 
     bench_price = indices_price_excel['SPI']
-    price = indices_price_excel[indices_price_excel.columns[1:]]
+    price = indices_price_excel[indices_price_excel.columns[1:]].shift(1)
 
     mom12 = price.pct_change(periods=21 * 12)
     mom6 = price.pct_change(periods=21 * 6)
@@ -40,11 +51,11 @@ def get_price_data():
                             mom12[col], mom6[col], mom1[col],
                             vol12[col], vol6[col], vol1[col],
                             RSI14[col], RSI9[col], RSI3[col], 
-                            MACD[col]], axis=1).loc['1997-01-01':].fillna(method='ffill')
+                            MACD[col]], axis=1).iloc[252:]#.fillna(method='ffill')
         df_temp.columns = ['ma50', 'ma100', 'ma200', 'mom12', 'mom6', 'mom1', 
-                        'vol12', 'vol6', 'vol1', 'RSI14', 'RSI9', 'MACD', 'RSI3']
+                        'vol12', 'vol6', 'vol1', 'RSI14', 'RSI9', 'RSI3', 'MACD']
         df_dict[col] = df_temp
-        
-    df_input = pd.concat(df_dict, axis=1).shift(1)
 
+    df_input = pd.concat(df_dict, axis=1).dropna(axis=0, how='any')
+    # print(df_input.head(2))
     return price, bench_price, df_input

@@ -41,7 +41,7 @@ def backtest_strat(df_input_all, price, rebalance_freq, model_name='MLP',
         # The moving window every 26 weeks
         first_end_date = next_friday(df_input_all.index[0] + relativedelta(years=training_window) + relativedelta(days=input_period))
         all_end_dates = best_pred.loc[first_end_date:].asfreq('W-FRI')[::26].index
-    
+
     for i, end_date in enumerate(tqdm(all_end_dates)):
 
         start_date = end_date - relativedelta(years=training_window)
@@ -66,7 +66,7 @@ def backtest_strat(df_input_all, price, rebalance_freq, model_name='MLP',
             # If we rebalance weekly, the input data will be daily data
             else:
                 df_input_period = df_input.loc[:idx].iloc[-input_period:]
-                
+
             X_period = df_input_period.values.reshape(input_period, num_tickers, num_features)
             X.append(X_period)
 
@@ -167,8 +167,8 @@ def run_backtest():
     training_window = 5
     nb_epochs_first = 2
     nb_epochs = 1
-    rebalance_freq = 'M'
-    input_period_days = 15
+    rebalance_freq = 'W-FRI'
+    input_period_days = 4
     input_period_weeks = 8
 
     if rebalance_freq == 'M':
@@ -177,11 +177,12 @@ def run_backtest():
         input_period = input_period_days
 
     for i, model_name in enumerate(models_list):
-        df_pred_dict[model_name], df_prob_dict[model_name] = backtest_strat(df_input_all=df_X, price=price, rebalance_freq=rebalance_freq, 
-                                                                            model_name=model_name, nb_epochs=nb_epochs, 
-                                                                            nb_epochs_first=nb_epochs_first, input_period=input_period, 
-                                                                            batch_size=batch_size, verbose=verbose, 
-                                                                            training_window=training_window, threshold=threshold)
+        df_pred_dict[model_name], \
+        df_prob_dict[model_name] = backtest_strat(df_input_all=df_X, price=price, rebalance_freq=rebalance_freq, 
+                                                  model_name=model_name, nb_epochs=nb_epochs, 
+                                                  nb_epochs_first=nb_epochs_first, input_period=input_period, 
+                                                  batch_size=batch_size, verbose=verbose, 
+                                                  training_window=training_window, threshold=threshold)
         
         if i == 0:
             df_prob_dict['Ensemble'] = df_prob_dict[model_name].copy()
@@ -208,7 +209,7 @@ def run_backtest():
 
     daily_returns = price.pct_change().shift(1)
     perf_bench = price_to_perf(bench_price.loc[df_pred_dict['Ensemble'].index[0]:df_pred_dict['Ensemble'].index[-1]], log=False)
-    performance_plot(df_pred_dict, daily_returns, perf_bench)
+    performance_plot(df_pred_dict, daily_returns, bench_price, log=True)
     annual_alpha_plot(perf_bench, df_pred_dict['Ensemble'], daily_returns)
 
 if __name__ == "__main__":

@@ -26,16 +26,6 @@ def next_friday(date):
     last_friday = date + relativedelta(days=delta_days)
     return last_friday
 
-def RSI(price, window):
-    price_diff = price.diff()
-    gain = price_diff.mask(price_diff < 0, 0.0)
-    loss = - price_diff.mask(price_diff > 0, -0.0)
-    avg_gain = gain.rolling(window=window).mean()
-    avg_loss = loss.rolling(window=window).mean()
-    rs = avg_gain / avg_loss
-    rsi = 1 - 1 / (1 + rs)
-    return rsi
-
 def perf_to_stat(perf_gross, perf_net):
 
     average_year_return_gross = perf_gross.resample('Y').apply(lambda x: (x[-1] - x[0]) / x[0]).mean() * 100
@@ -52,12 +42,12 @@ def perf_to_stat(perf_gross, perf_net):
     return [average_year_return_gross, average_year_return_net, average_year_std, average_year_sharpe, max_daily_dd]
 
 
-def performance_plot(df_pred_dict, daily_returns, perf_bench):
+def performance_plot(df_pred_dict, daily_returns, bench_price, log=True):
     tax = 0.0012
-
+    perf_bench = price_to_perf(bench_price.loc[df_pred_dict['Ensemble'].index[0]:df_pred_dict['Ensemble'].index[-1]], log=log)
     plt.figure(figsize=(14,6))
     for model_name in df_pred_dict:
-        perf_pred_net = pred_to_perf(df_pred_dict[model_name], daily_returns, tax, log=False)
+        perf_pred_net = pred_to_perf(df_pred_dict[model_name], daily_returns, tax, log=log)
         sns.lineplot(data=perf_pred_net.rolling(20).mean(), dashes=False, label=model_name)
 
     sns.lineplot(data=perf_bench.rolling(20).mean(), dashes=False, label='Benchmark')
