@@ -51,9 +51,6 @@ def train(model, X_train, y_train, nb_epochs, X_test=None, y_test=None, i=None, 
         for train_input, train_target in train_loader:
             optimizer.zero_grad()
             output = model(train_input)
-            # print(train_input.shape)
-            # print(train_input)
-            # print(output[0][0].item())
             loss = criterion(output, train_target)
             loss.backward()
             optimizer.step()
