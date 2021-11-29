@@ -6,6 +6,21 @@ from dateutil.relativedelta import relativedelta
 import calendar
 import os
 
+def index_pred_plot(df_pred, daily_returns, first_date='2008-01-01', last_date='2010-01-01'):
+
+    daily_ret = daily_returns.loc[first_date:last_date]
+    daily_perf = np.log((daily_ret + 1).cumprod())
+    df_pred_daily = df_pred.reindex(daily_ret.index, method='ffill').shift(1)
+    daily_perf_pred = daily_perf.mul(df_pred_daily).replace(0., np.nan)
+    indice_perf_pred = pd.Series(index=daily_perf_pred.index, dtype='float64', name='Prediction')
+    for idx, row in daily_perf_pred[1:].iterrows():
+        indice_perf_pred.loc[idx] = row[~row.isna()].item()
+
+    _, ax = plt.subplots(figsize=(12,8))
+    sns.lineplot(data=daily_perf.rolling(10).mean(), dashes=True, lw=1, zorder=1)
+    ax.plot(indice_perf_pred.rolling(10).mean(), label='Prediction', c='r', lw=2, zorder=2)
+    plt.legend()
+    plt.show()
 
 def last_month(date):
     year, month = date.year, date.month
@@ -103,7 +118,7 @@ def correlation(df_pred1, df_pred2):
 def pred_to_perf(df_pred, daily_returns, tax=0., log=False):
     first_date = df_pred.index[0]
     last_date = df_pred.index[-1]
-    daily_ret = daily_returns[first_date:last_date]
+    daily_ret = daily_returns.loc[first_date:last_date]
     df_pred_daily = df_pred.reindex(daily_ret.index, method='ffill').shift(1)
     df_perf = (df_pred_daily * daily_ret).sum(axis=1)
     df_cost = (df_pred_daily.diff().fillna(0) != 0).any(axis=1).astype(int) * tax

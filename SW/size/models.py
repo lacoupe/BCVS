@@ -52,7 +52,6 @@ class ConvNet(nn.Module):
         x = self.relu(self.drop2d(self.conv1(x)))
         x = self.relu(self.drop2d(self.conv2(x)))
         
-        # print(x.shape)
         x = x.flatten(start_dim=1)
 
         x = self.relu(self.drop(self.fc1(x)))

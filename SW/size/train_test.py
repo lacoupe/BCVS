@@ -29,10 +29,10 @@ def output_to_loss(model, X, y):
     return loss
 
 
-def train(model, X_train, y_train, nb_epochs, X_test=None, y_test=None, i=None, eta=1e-3, weight_decay=None, batch_size=1, verbose=0):
+def train(model, X_train, y_train, nb_epochs, X_test=None, y_test=None, i=None, eta=1e-3, weight_decay=0, batch_size=1, verbose=0):
     
     
-    optimizer = torch.optim.Adam(model.parameters(), lr=eta, weight_decay=1e-5)
+    optimizer = torch.optim.Adam(model.parameters(), lr=eta, weight_decay=weight_decay)
     criterion = nn.BCELoss()
     model.train()
     
@@ -53,6 +53,8 @@ def train(model, X_train, y_train, nb_epochs, X_test=None, y_test=None, i=None, 
             output = model(train_input)
             loss = criterion(output, train_target)
             loss.backward()
+
+            nn.utils.clip_grad_norm_(model.parameters(), 1)
             optimizer.step()
             
             if verbose in (2, 4):
@@ -76,7 +78,7 @@ def train(model, X_train, y_train, nb_epochs, X_test=None, y_test=None, i=None, 
                     
     if verbose in (1, 2):
         if i in (0, 1, 2):
-            fig, axs = plt.subplots(2, 1, figsize=(12,8))
+            _, axs = plt.subplots(2, 1, figsize=(12,8))
             axs[0].plot(list(range(nb_epochs)), train_loss_list, label='Train loss')
             axs[0].plot(list(range(nb_epochs)), test_loss_list, label='Test loss')
             axs[0].legend()
