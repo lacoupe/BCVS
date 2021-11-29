@@ -162,7 +162,7 @@ def run_backtest():
     df_prob_dict = {}
 
     threshold = 0.8
-    batch_size = 15
+    batch_size = 20
     verbose = 4
     training_window = 5
     nb_epochs_first = 300
@@ -214,7 +214,7 @@ def run_backtest():
     perf_bench = price_to_perf(bench_price.loc[df_pred_dict['Ensemble'].index[0]:df_pred_dict['Ensemble'].index[-1]], log=False)
     performance_plot(df_pred_dict, daily_returns, bench_price, log=True)
     annual_alpha_plot(perf_bench, df_pred_dict['Ensemble'], daily_returns)
-    index_pred_plot(df_pred_dict['Ensemble'], daily_returns)
+    # index_pred_plot(df_pred_dict['Ensemble'], daily_returns)
 
 if __name__ == "__main__":
     run_backtest()
