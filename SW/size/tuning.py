@@ -47,10 +47,10 @@ def tune_model():
     dim1, dim2, dim3 = X.size(1), X.size(2), X.size(3)
 
     tuning_list = []
-    for epoch in tqdm(nb_epochs):
-        for lr in tqdm(learning_rates, leave=False):
-            for w in tqdm(weight_decays, leave=False):
-                for drop in tqdm(dropouts, leave=False):
+    for epoch in tqdm(nb_epochs, position=0):
+        for lr in tqdm(learning_rates, leave=False, position=1):
+            for w in tqdm(weight_decays, leave=False, position=2):
+                for drop in tqdm(dropouts, leave=False, position=3):
                     model = MLP(dim1, dim2, dim3, pdrop=drop).to(device)
                     train(model, X_train, y_train, epoch, device=device, batch_size=batch_size, eta=lr, weight_decay=w, verbose=0)
                     tuning_list.append([lr, w, drop, epoch, np.round(output_to_loss(model, X_test, y_test).item(), 2), np.round(output_to_accu(model, X_test, y_test), 2)])
