@@ -25,8 +25,7 @@ def output_to_loss(model, X, y):
     for b in range(0, X.size(0)):
         output = model(X.narrow(0, b, 1))
         loss += criterion(output, y.narrow(0, b, 1))
-        
-    return loss
+    return loss.cpu()
 
 
 def train(model, X_train, y_train, nb_epochs, X_test=None, y_test=None, i=None, eta=1e-3, weight_decay=0, batch_size=1, verbose=0):
