@@ -42,7 +42,7 @@ def train(model, X_train, y_train, nb_epochs, X_test=None, y_test=None, i=None, 
         test_loss_list = []
     
     train_set = TensorDataset(X_train, y_train)    
-    train_loader = DataLoader(train_set, batch_size=batch_size, shuffle=True, drop_last=True)
+    train_loader = DataLoader(train_set, batch_size=batch_size, shuffle=True, drop_last=True, num_workers=1)
 
     class_count = np.unique(y_train, axis=0, return_counts=True)[1]
     weights = torch.tensor(class_count / sum(class_count))
