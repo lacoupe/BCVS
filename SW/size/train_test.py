@@ -31,7 +31,6 @@ def output_to_loss(model, X, y):
 
 def train(model, X_train, y_train, nb_epochs, X_test=None, y_test=None, i=None, eta=1e-3, weight_decay=0, batch_size=1, verbose=0):
     
-    
     optimizer = torch.optim.Adam(model.parameters(), lr=eta, weight_decay=weight_decay)
     criterion = nn.BCELoss()
     model.train()
@@ -43,7 +42,7 @@ def train(model, X_train, y_train, nb_epochs, X_test=None, y_test=None, i=None, 
         test_loss_list = []
     
     train_set = TensorDataset(X_train, y_train)    
-    train_loader = DataLoader(train_set, batch_size=batch_size, shuffle=True)
+    train_loader = DataLoader(train_set, batch_size=batch_size, shuffle=True, drop_last=True)
 
     for e in (tqdm(range(nb_epochs)) if (verbose == 3) else range(nb_epochs)):
         acc_loss = 0
@@ -91,29 +90,39 @@ def train(model, X_train, y_train, nb_epochs, X_test=None, y_test=None, i=None, 
             
 def test(model, X_test, y_test, threshold=None):
     
-    pred = np.zeros((X_test.size(0), y_test.size(1)))
+    # pred = np.zeros((X_test.size(0), y_test.size(1)))
     prob = []
     model.eval()
     for k in range(0, X_test.size(0)):
         output = model(X_test.narrow(0, k, 1))
         prob.append(output.cpu().detach().numpy())
 
-        if threshold is None:
-            _, pred_index = output.max(1)
-            pred[k, pred_index.item()] = 1
+        # if threshold is None:
+        #     _, pred_index = output.max(1)
+        #     pred[k, pred_index.item()] = 1
             
-        else:
-            if k == 0:
-                _, pred_index = output.max(1)
-                pred[k, pred_index.item()] = 1
-            else:
-                out, pred_index = output.max(1)
-                if out > threshold:
-                    pred[k, pred_index.item()] = 1
-                else:
-                    pred[k] = pred[k-1]
+        # else:
+        #     if k == 0:
+        #         _, pred_index = output.max(1)
+        #         pred[k, pred_index.item()] = 1
+        #     else:
+        #         out, pred_index = output.max(1)
+        #         if out > threshold:
+        #             pred[k, pred_index.item()] = 1
+        #         else:
+        #             pred[k] = pred[k-1]
 
-    return np.array(prob), pred
+    return np.array(prob)
 
+def test_accuracy(model, X_test, y_test, threshold=None):
+    
+
+    prob = []
+    model.eval()
+    for k in range(0, X_test.size(0)):
+        output = model(X_test.narrow(0, k, 1))
+        prob.append(output.cpu().detach().numpy())
+
+    return np.array(prob)
     
     

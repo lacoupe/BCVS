@@ -6,7 +6,7 @@ import torch
 from dateutil.relativedelta import relativedelta
 from tqdm import tqdm
 import calendar
-from helpers import performance_plot, resume_backtest, annual_alpha_plot, price_to_perf, last_month, next_friday, index_pred_plot
+from helpers import performance_plot, resume_backtest, annual_alpha_plot, price_to_perf, last_month, next_friday, prob_to_pred
 from models import MLP, ConvNet, LSTM
 from train_test import train, test
 from data import get_price_data
@@ -21,7 +21,6 @@ def backtest_strat(df_input_all, price, rebalance_freq, model_name='MLP',
                    batch_size=1, verbose=0, threshold=0.4, eta=1e-3, weight_decay=0):
 
     print('Backtesting model ' + model_name)
-    # first_end_date = '2002-02-01'
 
     num_tickers = len(df_input_all.columns.get_level_values(0).unique())
     num_features = len(df_input_all.columns.get_level_values(1).unique())
@@ -31,7 +30,6 @@ def backtest_strat(df_input_all, price, rebalance_freq, model_name='MLP',
     best_pred = returns.rank(axis=1).replace({1: 0., 2: 0., 3: 1.}).shift(-1)
     
     prob_output = []
-    pred_output = []
     
     if rebalance_freq == 'M':
         # The moving window every 6 month
@@ -39,34 +37,42 @@ def backtest_strat(df_input_all, price, rebalance_freq, model_name='MLP',
         all_end_dates = best_pred.loc[first_end_date:].asfreq('6M').index
     else:
         # The moving window every 26 weeks
-        first_end_date = next_friday(df_input_all.index[0] + relativedelta(years=training_window) + relativedelta(days=input_period))
+        first_end_date = next_friday(df_input_all.index[input_period] + relativedelta(years=training_window))#  + relativedelta(days=input_period))
         all_end_dates = best_pred.loc[first_end_date:].asfreq('W-FRI')[::26].index
 
     for i, end_date in enumerate(tqdm(all_end_dates)):
 
-        start_date = end_date - relativedelta(years=training_window)
-
         # The first date input must before the first date output
         if rebalance_freq =='M':
             # Make sur the input period start the 1st of the month
+            start_date = last_month(end_date - relativedelta(years=training_window))
             start_date_input = (start_date - relativedelta(weeks=input_period)).replace(day=1) 
         else:
-            start_date_input = start_date - relativedelta(days=input_period)
+            start_date = next_friday(end_date - relativedelta(years=training_window))
+            # start_date_input = start_date - relativedelta(days=input_period)
+            start_date_input = df_input_all.loc[:start_date].iloc[-input_period:].index[0]
+            # print('start_date_input', start_date_input)
             # Make sur the input period start a monday
-            start_date_input = start_date_input - relativedelta(days=(start_date_input.weekday()))
+            # start_date_input = start_date_input - relativedelta(days=(start_date_input.weekday()))
 
+        # print('end_date', end_date)
+        # print('start_date', start_date)
+        # print('start_Date_input', start_date_input)
         df_input = df_input_all.loc[start_date_input:end_date]
         df_output = best_pred.loc[start_date:end_date]
-
+        # print(df_input.head())
         X = []
         for idx in df_output.index:
+            # print('index', idx)
             # If we rebalance monthly, the input data will be weekly data
             if rebalance_freq == 'M':
                 df_input_period = df_input.loc[:idx].resample('W').mean().iloc[-input_period:]
             # If we rebalance weekly, the input data will be daily data
             else:
                 df_input_period = df_input.loc[:idx].iloc[-input_period:]
+                # print(df_input_period.head())
 
+            # print(len(df_input_period))
             X_period = df_input_period.values.reshape(input_period, num_tickers, num_features)
             X.append(X_period)
 
@@ -129,25 +135,20 @@ def backtest_strat(df_input_all, price, rebalance_freq, model_name='MLP',
         model.to(device)
 
         # More epochs needed for the first iteration 
-        if i == 0:
-            nb_epochs_all = nb_epochs_first
-        else:
-            nb_epochs_all = nb_epochs
-        # Train the model
 
-        train(model, X_train, y_train, nb_epochs_all, X_test, y_test, i, eta=eta, weight_decay=weight_decay, batch_size=batch_size, verbose=verbose)
+        # Train the model
+        train(model, X_train, y_train, nb_epochs, X_test, y_test, i, eta=eta, weight_decay=weight_decay, batch_size=batch_size, verbose=verbose)
 
         # Get predictions
-        prob, pred = test(model, X_test, y_test, threshold=threshold)
-        pred_output.append(pred)
+        prob = test(model, X_test, y_test, threshold=threshold)
         prob_output.append(prob)
 
-    pred_output = np.array(pred_output).reshape(len(all_end_dates) * X_test.size(0), y_test.size(1))
-    df_pred = pd.DataFrame(index=best_pred[first_start_date_test:end_date].index, data=pred_output, columns=best_pred.columns)
+    # pred_output = np.array(pred_output).reshape(len(all_end_dates) * X_test.size(0), y_test.size(1))
+    # df_pred = pd.DataFrame(index=best_pred[first_start_date_test:end_date].index, data=pred_output, columns=best_pred.columns)
     prob_output = np.array(prob_output).reshape(len(all_end_dates) * X_test.size(0), y_test.size(1))
     df_prob = pd.DataFrame(index=best_pred[first_start_date_test:end_date].index, data=prob_output, columns=best_pred.columns)
     
-    return df_pred, df_prob
+    return df_prob
 
 def run_backtest():
 
@@ -157,21 +158,20 @@ def run_backtest():
 
     # models_list = ['MLP', 'ConvNet', 'LSTM']
     # models_list = ['MLP', 'ConvNet']
-    models_list = ['ConvNet']
+    models_list = ['MLP']
     df_pred_dict = {}
     df_prob_dict = {}
 
     threshold = 0.8
-    batch_size = 20
+    batch_size = 5
     verbose = 4
     training_window = 5
-    nb_epochs_first = 300
-    nb_epochs = 300
+    nb_epochs = 1
     rebalance_freq = 'W-FRI'
-    input_period_days = 4
+    input_period_days = 42
     input_period_weeks = 8
     eta = 1e-3
-    weight_decay = 1e-5
+    weight_decay = 1e-4
 
     if rebalance_freq == 'M':
         input_period = input_period_weeks
@@ -179,13 +179,13 @@ def run_backtest():
         input_period = input_period_days
 
     for i, model_name in enumerate(models_list):
-        df_pred_dict[model_name], \
         df_prob_dict[model_name] = backtest_strat(df_input_all=df_X, price=price, rebalance_freq=rebalance_freq, 
                                                   model_name=model_name, nb_epochs=nb_epochs, 
-                                                  nb_epochs_first=nb_epochs_first, input_period=input_period, 
+                                                  input_period=input_period, 
                                                   batch_size=batch_size, verbose=verbose, 
                                                   training_window=training_window, threshold=threshold, 
                                                   eta=eta, weight_decay=weight_decay)
+        df_pred_dict[model_name] = prob_to_pred(df_prob_dict[model_name], threshold)
         
         if i == 0:
             df_prob_dict['Ensemble'] = df_prob_dict[model_name].copy()
@@ -193,19 +193,7 @@ def run_backtest():
             df_prob_dict['Ensemble'] += df_prob_dict[model_name]
             
     df_prob_dict['Ensemble'] /= len(models_list)
-    df_pred_dict['Ensemble'] = pd.DataFrame().reindex_like(df_prob_dict['Ensemble']).fillna(0)
-    cols = df_pred_dict['Ensemble'].columns
-    for k in range(0, len(df_pred_dict['Ensemble'])):
-        if k == 0:
-            pred_index = df_prob_dict['Ensemble'].iloc[k].argmax()
-            df_pred_dict['Ensemble'].iloc[k][cols[pred_index]] = 1
-        else:
-            out = df_prob_dict['Ensemble'].iloc[k].max()
-            pred_index = df_prob_dict['Ensemble'].iloc[k].argmax()
-            if out > threshold:
-                df_pred_dict['Ensemble'].iloc[k][cols[pred_index]] = 1
-            else:
-                df_pred_dict['Ensemble'].iloc[k] = df_pred_dict['Ensemble'].iloc[k-1]
+    df_pred_dict['Ensemble'] = prob_to_pred(df_prob_dict[model_name], threshold)
 
     df_resume = resume_backtest(df_pred_dict, bench_price, price)
     print(df_resume)

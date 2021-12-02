@@ -6,6 +6,24 @@ from dateutil.relativedelta import relativedelta
 import calendar
 import os
 
+def prob_to_pred(df_prob, threshold):
+    df_pred = pd.DataFrame().reindex_like(df_prob).fillna(0)
+    cols = df_pred.columns
+    for k in range(0, len(df_pred)):
+        if k == 0:
+            pred_index = df_prob.iloc[k].argmax()
+            df_pred.iloc[k][cols[pred_index]] = 1
+        else:
+            out = df_prob.iloc[k].max()
+            pred_index = df_prob.iloc[k].argmax()
+            if out > threshold:
+                df_pred.iloc[k][cols[pred_index]] = 1
+            else:
+                df_pred.iloc[k] = df_pred.iloc[k-1]
+    return df_pred
+
+
+
 def index_pred_plot(df_pred, daily_returns, first_date='2008-01-01', last_date='2010-01-01'):
 
     daily_ret = daily_returns.loc[first_date:last_date]

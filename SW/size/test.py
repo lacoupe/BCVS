@@ -2,7 +2,7 @@ import pandas as pd
 import numpy as np
 import torch
 from dateutil.relativedelta import relativedelta
-from helpers import last_friday, last_month, annual_alpha_plot
+from helpers import last_friday, last_month
 from models import MLP, ConvNet, LSTM
 from train_test import train
 from data import get_price_data
@@ -12,14 +12,14 @@ pd.set_option('display.max_rows', None)
 # import os, sys
 # sys.path.append(os.path.join(os.path.dirname(__file__)))
 
-def strat(df_input_all, price, rebalance_freq, model_name='MLP', nb_epochs=50, input_period=8, training_window=5, batch_size=1, verbose=0, eta=1e-3):
+def get_training_processed_data(df_input_all, price, rebalance_freq, input_period, training_window):
 
     last_date = price.index[-1]
 
     if rebalance_freq == 'M':
         last_date_train = last_month(last_date - relativedelta(weeks=input_period))
     else:
-        last_date_train = last_friday(last_date - relativedelta(days=input_period))
+        last_date_train = last_friday(price.index[-input_period])
     
     num_tickers = len(df_input_all.columns.get_level_values(0).unique())
     num_features = len(df_input_all.columns.get_level_values(1).unique())
@@ -36,8 +36,10 @@ def strat(df_input_all, price, rebalance_freq, model_name='MLP', nb_epochs=50, i
     if rebalance_freq =='M':
         start_date_input = (start_date - relativedelta(weeks=input_period)).replace(day=1) 
     else:
-        start_date_input = start_date - relativedelta(days=input_period)
-        start_date_input = start_date_input - relativedelta(days=(start_date_input.weekday()))
+        # start_date_input = start_date - relativedelta(days=input_period)
+        # start_date_input = start_date_input - relativedelta(days=(start_date_input.weekday()))
+        start_date_input = price.loc[:start_date].iloc[-input_period:].index[0]
+
 
     df_output = best_pred.loc[start_date:].dropna()
     df_input = df_input_all.loc[start_date_input:df_output.index[-1]]
@@ -60,12 +62,21 @@ def strat(df_input_all, price, rebalance_freq, model_name='MLP', nb_epochs=50, i
     y = df_output.values
     X, y = torch.from_numpy(X).float(), torch.from_numpy(y).float()
 
-    train_mean = X.mean(dim=[0, 1, 2], keepdim=True)
-    train_std = X.std(dim=[0, 1, 2], keepdim=True)
-    X = X.sub_(train_mean).div_(train_std)
+    return X, y
+
+
+def strat(df_input_all, price, rebalance_freq, model_name='MLP', nb_epochs=50, input_period=8, training_window=5, batch_size=1, verbose=0, eta=1e-3, weight_decay=1e-5):
+
+    num_tickers = len(df_input_all.columns.get_level_values(0).unique())
+    num_features = len(df_input_all.columns.get_level_values(1).unique())
+
+    X, y = get_training_processed_data(df_input_all, price, rebalance_freq, input_period, training_window)
+
+    mean = X.mean(dim=[0, 1, 2], keepdim=True)
+    std = X.std(dim=[0, 1, 2], keepdim=True)
+    X = X.sub_(mean).div_(std)
 
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-    
     X = X.to(device)
     y = y.to(device)
 
@@ -79,22 +90,22 @@ def strat(df_input_all, price, rebalance_freq, model_name='MLP', nb_epochs=50, i
         model = LSTM(input_size=num_tickers * num_features, output_size=num_tickers, device=device)
     model.to(device)
 
-    train(model, X, y, nb_epochs, batch_size=batch_size, eta=eta, verbose=verbose)
+    train(model, X, y, nb_epochs, batch_size=batch_size, eta=eta, verbose=verbose, weight_decay=weight_decay)
 
     # Today output
     if rebalance_freq == 'M':
         dayofweek = {0:'Monday', 1:'Tuesday', 2:'Wednesday', 3:'Thursday', 4:'Friday', 5:'Saturday', 6:'Sunday'}
         reb_freq_input = 'W-' + dayofweek[df_input_all.index[-1].weekday()][:3].upper()
-        df_input_period = df_input.loc[:idx].resample(reb_freq_input).mean().iloc[-input_period:]
+        df_input_period = df_input_all.resample(reb_freq_input).mean().iloc[-input_period:]
     else:
         df_input_period = df_input_all.iloc[-input_period:]
 
     X = df_input_period.values.reshape(input_period, num_tickers, num_features)
     X = torch.from_numpy(X).float()
     X = X.view(1, X.size(0), X.size(1), X.size(2)).to(device)
-    test_mean = X.mean(dim=[0, 1, 2], keepdim=True)
-    test_std = X.std(dim=[0, 1, 2], keepdim=True)
-    X = X.sub_(test_mean).div_(test_std)
+    # test_mean = X.mean(dim=[0, 1, 2], keepdim=True)
+    # test_std = X.std(dim=[0, 1, 2], keepdim=True)
+    X = X.sub_(mean).div_(std)
 
     model.eval()
     out = model(X)
@@ -106,17 +117,17 @@ def run():
 
     models_list = ['MLP', 'ConvNet', 'LSTM']
     # models_list = ['MLP', 'ConvNet']
+
     output = pd.DataFrame(index=['Ensemble'], columns=price.columns)
 
     batch_size = 10
     training_window = 5
-    nb_epochs = 200
+    nb_epochs = 50
     verbose = 3
     rebalance_freq = 'W-FRI'
-    input_period_days = 15
+    input_period_days = 42
     input_period_weeks = 8
     eta = 1e-3
-    # input_period = 15
 
     if rebalance_freq == 'M':
         input_period = input_period_weeks
@@ -137,6 +148,8 @@ def run():
             output.loc['Ensemble'] += output.loc[model_name]
 
     output.loc['Ensemble'] /= len(models_list)
+
+    # Results
     print(32 * '*')
     print(output.round(2))
     print(32 * '*')
