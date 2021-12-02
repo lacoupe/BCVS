@@ -52,7 +52,7 @@ def tune_model():
             for w in tqdm(weight_decays, leave=False):
                 for drop in tqdm(dropouts, leave=False):
                     model = MLP(dim1, dim2, dim3, pdrop=drop).to(device)
-                    train(model, X_train, y_train, epoch, batch_size=batch_size, eta=lr, weight_decay=w, verbose=0)
+                    train(model, X_train, y_train, epoch, device=device, batch_size=batch_size, eta=lr, weight_decay=w, verbose=0)
                     tuning_list.append([lr, w, drop, epoch, np.round(output_to_loss(model, X_test, y_test).item(), 2), np.round(output_to_accu(model, X_test, y_test), 2)])
     print(pd.DataFrame(data=tuning_list, columns=['Learning_rate', 'Weight_decay', 'Dropout', 'Nb_epochs', 'Loss', 'Accuracy']).sort_values('Loss').to_string(index=False))
 

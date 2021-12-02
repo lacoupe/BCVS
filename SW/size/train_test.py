@@ -29,7 +29,7 @@ def output_to_loss(model, X, y):
     return loss.cpu()
 
 
-def train(model, X_train, y_train, nb_epochs, X_test=None, y_test=None, i=None, eta=1e-3, weight_decay=0, batch_size=1, verbose=0):
+def train(model, X_train, y_train, nb_epochs, device, X_test=None, y_test=None, i=None, eta=1e-3, weight_decay=0, batch_size=1, verbose=0):
     
     optimizer = torch.optim.Adam(model.parameters(), lr=eta, weight_decay=weight_decay)
     criterion = nn.BCELoss(reduction='none')
@@ -45,7 +45,7 @@ def train(model, X_train, y_train, nb_epochs, X_test=None, y_test=None, i=None, 
     train_loader = DataLoader(train_set, batch_size=batch_size, shuffle=True, drop_last=True, num_workers=0)
 
     class_count = np.unique(y_train.cpu(), axis=0, return_counts=True)[1]
-    weights = torch.tensor(class_count / sum(class_count))
+    weights = torch.tensor(class_count / sum(class_count)).to(device)
 
     for e in (tqdm(range(nb_epochs)) if (verbose == 3) else range(nb_epochs)):
         acc_loss = 0
