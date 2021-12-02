@@ -21,9 +21,6 @@ def tune_model():
 
     # Process data
     X, y = get_training_processed_data(df_input_all, price, rebalance_freq, input_period, training_window)
-    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-    X = X.to(device)
-    y = y.to(device)
     train_indices, test_indices, _, _ = train_test_split(range(len(y)), y, stratify=y, test_size=0.3)
     X_train, y_train, X_test, y_test = X[train_indices], y[train_indices], X[test_indices], y[test_indices]
 
@@ -32,6 +29,12 @@ def tune_model():
     X_train = X_train.sub_(mean).div_(std)
     X_test = X_test.sub_(mean).div_(std)
 
+    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+    X_train = X_train.to(device)
+    y_train = y_train.to(device)
+    X_test = X_test.to(device)
+    y_test = y_test.to(device)
+    
     # Grid parameters
     learning_rates = [1e-4, 5e-4, 1e-3, 5e-3]
     weight_decays = [1e-4, 5e-4, 1e-3, 5e-3]
