@@ -5,7 +5,6 @@ from models import MLP
 import pandas as pd
 import numpy as np
 from tqdm import tqdm
-from torch.utils.data import random_split
 from sklearn.model_selection import train_test_split
 import torch
 
@@ -34,12 +33,12 @@ def tune_model():
     y_train = y_train.to(device)
     X_test = X_test.to(device)
     y_test = y_test.to(device)
-    
+
     # Grid parameters
-    learning_rates = [1e-4, 5e-4, 1e-3, 5e-3]
-    weight_decays = [1e-4, 5e-4, 1e-3, 5e-3]
-    dropouts = [0.1, 0.20, 0.25, 0.30]
-    nb_epochs = [100, 200, 300]
+    learning_rates = [5e-3, 1e-2]
+    weight_decays = [5e-4, 1e-3, 5e-3]
+    dropouts = [0.25, 0.30]
+    nb_epochs = [100, 200]
 
     # Fixed ML parameters
     # nb_epochs = 100
@@ -48,7 +47,7 @@ def tune_model():
     dim1, dim2, dim3 = X.size(1), X.size(2), X.size(3)
 
     tuning_list = []
-    for epoch in tqdm(nb_epochs, leave=False):
+    for epoch in tqdm(nb_epochs):
         for lr in tqdm(learning_rates, leave=False):
             for w in tqdm(weight_decays, leave=False):
                 for drop in tqdm(dropouts, leave=False):

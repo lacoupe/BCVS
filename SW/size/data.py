@@ -54,6 +54,7 @@ def get_price_data():
     ema_12 = price.ewm(span=12).mean()
     ema_26 = price.ewm(span=26).mean()
     MACD = ema_12 - ema_26
+    MACD_diff = MACD - MACD.ewm(span=9).mean()
 
     df_dict = {}
     df_input = pd.DataFrame()
@@ -63,11 +64,11 @@ def get_price_data():
                             mom12[col], mom6[col], mom1[col],
                             vol12[col], vol6[col], vol1[col],
                             RSI14[col], RSI9[col], RSI3[col], 
-                            MACD[col], upper_boll_diff[col], lower_boll_diff[col]
+                            MACD[col], MACD_diff[col], upper_boll_diff[col], lower_boll_diff[col]
                             ],
                             axis=1).iloc[252:]
         df_temp.columns = ['ma50', 'ma100', 'ma200', 'mom12', 'mom6', 'mom1',
-                           'vol12', 'vol6', 'vol1', 'RSI14', 'RSI9', 'RSI3', 'MACD', 'upper_boll_diff', 'lower_boll_diff'
+                           'vol12', 'vol6', 'vol1', 'RSI14', 'RSI9', 'RSI3', 'MACD', 'MACD_diff', 'upper_boll_diff', 'lower_boll_diff'
                            ]
         df_dict[col] = df_temp
 

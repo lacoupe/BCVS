@@ -122,12 +122,13 @@ def run():
 
     batch_size = 10
     training_window = 5
-    nb_epochs = 50
-    verbose = 3
+    nb_epochs = 150
+    verbose = 4
     rebalance_freq = 'W-FRI'
     input_period_days = 42
     input_period_weeks = 8
-    eta = 1e-3
+    eta = 5e-3
+    weight_decay = 1e-4
 
     if rebalance_freq == 'M':
         input_period = input_period_weeks
@@ -139,7 +140,7 @@ def run():
         df_output = strat(df_input_all=df_X, price=price, rebalance_freq=rebalance_freq, 
                           model_name=model_name, nb_epochs=nb_epochs, 
                           input_period=input_period, batch_size=batch_size,
-                          training_window=training_window, verbose=verbose, eta=eta)
+                          training_window=training_window, verbose=verbose, eta=eta, weight_decay=weight_decay)
         output = pd.concat([output, df_output])
         
         if i == 0:

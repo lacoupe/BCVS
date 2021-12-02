@@ -3,7 +3,7 @@ from torch import nn
 
 
 class MLP(nn.Module):
-    def __init__(self, dim1, dim2, dim3, pdrop=0.2, hidden_size1=15, hidden_size2=10, hidden_size3=10):
+    def __init__(self, dim1, dim2, dim3, pdrop=0.25, hidden_size1=15, hidden_size2=10, hidden_size3=10):
         super().__init__()
 
         self.fc1 = nn.Linear(dim1 * dim2 * dim3, hidden_size1)
@@ -27,7 +27,7 @@ class MLP(nn.Module):
 
     
 class ConvNet(nn.Module):
-    def __init__(self, dim1, dim2, dim3, dim1_kernel1=2, dim2_kernel1=2, dim1_kernel2=2, dim2_kernel2=2, pdrop=0.2):
+    def __init__(self, dim1, dim2, dim3, dim1_kernel1=3, dim2_kernel1=2, dim1_kernel2=2, dim2_kernel2=2, pdrop=0.3):
         super().__init__()
         
         self.dim1 = dim1

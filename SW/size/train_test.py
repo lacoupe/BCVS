@@ -1,6 +1,7 @@
 import numpy as np
 import torch
 from torch import nn
+from torch.nn.utils import clip_grad_norm_
 import matplotlib.pyplot as plt 
 from torch.utils.data import TensorDataset, DataLoader
 from tqdm import tqdm
@@ -31,7 +32,7 @@ def output_to_loss(model, X, y):
 def train(model, X_train, y_train, nb_epochs, X_test=None, y_test=None, i=None, eta=1e-3, weight_decay=0, batch_size=1, verbose=0):
     
     optimizer = torch.optim.Adam(model.parameters(), lr=eta, weight_decay=weight_decay)
-    criterion = nn.BCELoss()
+    criterion = nn.BCELoss(reduction='none')
     model.train()
     
     if verbose in (1, 2):
@@ -43,6 +44,9 @@ def train(model, X_train, y_train, nb_epochs, X_test=None, y_test=None, i=None, 
     train_set = TensorDataset(X_train, y_train)    
     train_loader = DataLoader(train_set, batch_size=batch_size, shuffle=True, drop_last=True)
 
+    class_count = np.unique(y_train, axis=0, return_counts=True)[1]
+    weights = torch.tensor(class_count / sum(class_count))
+
     for e in (tqdm(range(nb_epochs)) if (verbose == 3) else range(nb_epochs)):
         acc_loss = 0
         model.train()
@@ -50,9 +54,9 @@ def train(model, X_train, y_train, nb_epochs, X_test=None, y_test=None, i=None, 
             optimizer.zero_grad()
             output = model(train_input)
             loss = criterion(output, train_target)
+            loss = (loss * weights).mean()
             loss.backward()
-
-            nn.utils.clip_grad_norm_(model.parameters(), 1)
+            clip_grad_norm_(model.parameters(), 1)
             optimizer.step()
             
             if verbose in (2, 4):
