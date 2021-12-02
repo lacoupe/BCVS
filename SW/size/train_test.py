@@ -44,7 +44,7 @@ def train(model, X_train, y_train, nb_epochs, X_test=None, y_test=None, i=None, 
     train_set = TensorDataset(X_train, y_train)    
     train_loader = DataLoader(train_set, batch_size=batch_size, shuffle=True, drop_last=True, num_workers=1)
 
-    class_count = np.unique(y_train, axis=0, return_counts=True)[1]
+    class_count = np.unique(y_train.cpu(), axis=0, return_counts=True)[1]
     weights = torch.tensor(class_count / sum(class_count))
 
     for e in (tqdm(range(nb_epochs)) if (verbose == 3) else range(nb_epochs)):
