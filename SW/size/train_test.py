@@ -5,6 +5,8 @@ from torch.nn.utils import clip_grad_norm_
 import matplotlib.pyplot as plt 
 from torch.utils.data import TensorDataset, DataLoader
 from tqdm import tqdm
+import os
+
 
 def output_to_accu(model, X, y):
     model.eval()
@@ -13,8 +15,10 @@ def output_to_accu(model, X, y):
         output = model(X.narrow(0, b, 1))
         _, predicted_classes = output.max(1)
         for k in range(1):
-            if y[b + k, predicted_classes[k]] != 1.:
+            if predicted_classes[k] != y.max(1)[1][b]:
                 nb_errors = nb_errors + 1
+            # if y[b + k, predicted_classes[k]] != 1.:
+            #     nb_errors = nb_errors + 1
     accuracy = 100 * (1 - nb_errors / X.size(0))
     return accuracy
 
@@ -26,13 +30,17 @@ def output_to_loss(model, X, y):
     for b in range(0, X.size(0)):
         output = model(X.narrow(0, b, 1))
         loss += criterion(output, y.narrow(0, b, 1))
-    return loss.cpu()
+    return (loss / X.size(0)).cpu()
 
 
-def train(model, X_train, y_train, nb_epochs, device, X_test=None, y_test=None, i=None, eta=1e-3, weight_decay=0, batch_size=1, verbose=0):
+def train(model, X_train, y_train, nb_epochs, device, X_test=None, y_test=None, i=None, eta=1e-3, weight_decay=0, batch_size=1, verbose=0, classification=True):
     
     optimizer = torch.optim.Adam(model.parameters(), lr=eta, weight_decay=weight_decay)
-    criterion = nn.BCELoss(reduction='none')
+    if classification:
+        criterion = nn.BCELoss(reduction='none')
+    else:
+        criterion = nn.MSELoss()
+    
     model.train()
     
     if verbose in (1, 2):
@@ -44,8 +52,9 @@ def train(model, X_train, y_train, nb_epochs, device, X_test=None, y_test=None, 
     train_set = TensorDataset(X_train, y_train)    
     train_loader = DataLoader(train_set, batch_size=batch_size, shuffle=True, drop_last=True, num_workers=0)
 
-    class_count = np.unique(y_train.cpu(), axis=0, return_counts=True)[1]
-    weights = torch.tensor(class_count / sum(class_count)).to(device)
+    if classification:
+        class_count = np.unique(y_train.cpu(), axis=0, return_counts=True)[1]
+        weights = torch.tensor(class_count / sum(class_count)).to(device)
 
     for e in (tqdm(range(nb_epochs)) if (verbose == 3) else range(nb_epochs)):
         acc_loss = 0
@@ -54,7 +63,8 @@ def train(model, X_train, y_train, nb_epochs, device, X_test=None, y_test=None, 
             optimizer.zero_grad()
             output = model(train_input)
             loss = criterion(output, train_target)
-            loss = (loss * weights).mean()
+            if classification:
+                loss = (loss * weights).mean()
             loss.backward()
             clip_grad_norm_(model.parameters(), 1)
             optimizer.step()
@@ -87,39 +97,13 @@ def train(model, X_train, y_train, nb_epochs, device, X_test=None, y_test=None, 
             axs[1].plot(list(range(nb_epochs)), train_accu_list, label='Train accuracy')
             axs[1].plot(list(range(nb_epochs)), test_accu_list, label='Test accuracy')
             axs[1].legend()
-            # plt.suptitle(end_date.date().strftime(format='%b %Y'))
+            plot_path = os.path.join(os.path.dirname(__file__)) + '/plots/learning_curve_' + model.__class__.__name__ + '.png'
+            plt.savefig(plot_path)
             plt.show()
 
             
-def test(model, X_test, y_test, threshold=None):
+def test(model, X_test):
     
-    # pred = np.zeros((X_test.size(0), y_test.size(1)))
-    prob = []
-    model.eval()
-    for k in range(0, X_test.size(0)):
-        output = model(X_test.narrow(0, k, 1))
-        prob.append(output.cpu().detach().numpy())
-
-        # if threshold is None:
-        #     _, pred_index = output.max(1)
-        #     pred[k, pred_index.item()] = 1
-            
-        # else:
-        #     if k == 0:
-        #         _, pred_index = output.max(1)
-        #         pred[k, pred_index.item()] = 1
-        #     else:
-        #         out, pred_index = output.max(1)
-        #         if out > threshold:
-        #             pred[k, pred_index.item()] = 1
-        #         else:
-        #             pred[k] = pred[k-1]
-
-    return np.array(prob)
-
-def test_accuracy(model, X_test, y_test, threshold=None):
-    
-
     prob = []
     model.eval()
     for k in range(0, X_test.size(0)):

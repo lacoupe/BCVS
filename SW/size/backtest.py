@@ -140,7 +140,7 @@ def backtest_strat(df_input_all, price, rebalance_freq, model_name='MLP',
         train(model, X_train, y_train, nb_epochs, X_test, y_test, i, eta=eta, weight_decay=weight_decay, batch_size=batch_size, verbose=verbose)
 
         # Get predictions
-        prob = test(model, X_test, y_test, threshold=threshold)
+        prob = test(model, X_test)
         prob_output.append(prob)
 
     # pred_output = np.array(pred_output).reshape(len(all_end_dates) * X_test.size(0), y_test.size(1))
@@ -164,9 +164,9 @@ def run_backtest():
 
     threshold = 0.8
     batch_size = 5
-    verbose = 4
+    verbose = 0
     training_window = 5
-    nb_epochs = 1
+    nb_epochs = 2
     rebalance_freq = 'W-FRI'
     input_period_days = 42
     input_period_weeks = 8

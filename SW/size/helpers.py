@@ -23,6 +23,14 @@ def prob_to_pred(df_prob, threshold):
     return df_pred
 
 
+def prob_to_pred_2(df_prob):
+    df_pred = pd.DataFrame().reindex_like(df_prob).fillna(0)
+    cols = df_pred.columns
+    for k in range(0, len(df_pred)):
+        pred_index = df_prob.iloc[k].argmax()
+        df_pred.iloc[k][cols[pred_index]] = 1
+    return df_pred
+
 
 def index_pred_plot(df_pred, daily_returns, first_date='2008-01-01', last_date='2010-01-01'):
 
@@ -59,20 +67,7 @@ def next_friday(date):
     last_friday = date + relativedelta(days=delta_days)
     return last_friday
 
-def perf_to_stat(perf_gross, perf_net):
 
-    average_year_return_gross = perf_gross.resample('Y').apply(lambda x: (x[-1] - x[0]) / x[0]).mean() * 100
-    average_year_return_net = perf_net.resample('Y').apply(lambda x: (x[-1] - x[0]) / x[0]).mean() * 100
-
-    average_year_std = perf_gross.pct_change().std() * np.sqrt(256) * 100
-    average_year_sharpe = average_year_return_net / average_year_std
-    
-    dd_window = 252
-    roll_max = perf_gross.rolling(dd_window).max()
-    daily_dd = perf_gross / roll_max - 1
-    max_daily_dd = np.abs(daily_dd.rolling(dd_window, min_periods=1).min()).max() * 100
-
-    return [average_year_return_gross, average_year_return_net, average_year_std, average_year_sharpe, max_daily_dd]
 
 
 def performance_plot(df_pred_dict, daily_returns, bench_price, log=True):
@@ -147,7 +142,7 @@ def pred_to_perf(df_pred, daily_returns, tax=0., log=False):
     return perf
 
 
-def pred_to_daily_ret(df_pred, daily_returns, log=False):
+def pred_to_daily_ret(df_pred, daily_returns):
     first_date = df_pred.index[0]
     last_date = df_pred.index[-1]
     daily_ret = daily_returns[first_date:last_date]
@@ -164,20 +159,86 @@ def price_to_perf(df, log=False):
     return perf
 
 
+def perf_to_stat(perf_gross, perf_net):
+
+    average_year_return_gross = perf_gross.resample('Y').apply(lambda x: (x[-1] - x[0]) / x[0]).mean() * 100
+    average_year_return_net = perf_net.resample('Y').apply(lambda x: (x[-1] - x[0]) / x[0]).mean() * 100
+
+    average_year_std = perf_gross.pct_change().std() * np.sqrt(256) * 100
+    average_year_sharpe = average_year_return_net / average_year_std
+    
+    dd_window = 252
+    roll_max = perf_gross.rolling(dd_window).max()
+    daily_dd = perf_gross / roll_max - 1
+    max_daily_dd = np.abs(daily_dd.rolling(dd_window, min_periods=1).min()).max() * 100
+
+    return [average_year_return_gross, average_year_return_net, average_year_std, average_year_sharpe, max_daily_dd]
+
+
+def perf_to_stat_2(df_pred, daily_returns, tax=0.0012):
+
+    first_date = df_pred.index[0]
+    last_date = df_pred.index[-1]
+    daily_ret = daily_returns.loc[first_date:last_date]
+    df_pred_daily = df_pred.reindex(daily_ret.index, method='ffill').shift(1)
+    df_daily_perf= (df_pred_daily * daily_ret).sum(axis=1)
+    df_cost = (df_pred_daily.diff().fillna(0) != 0).any(axis=1).astype(int) * tax
+    perf_gross = (1 + df_daily_perf - df_cost).cumprod()
+    
+    average_year_return_gross = df_daily_perf.mean() * 252 * 100
+    average_year_return_net = (df_daily_perf - df_cost).mean() * 252 * 100
+
+    average_year_std = df_daily_perf.std() * np.sqrt(256) * 100
+    average_year_sharpe = average_year_return_net / average_year_std
+    
+    dd_window = 252
+    roll_max = perf_gross.rolling(dd_window).max()
+    daily_dd = perf_gross / roll_max - 1
+    max_daily_dd = np.abs(daily_dd.rolling(dd_window, min_periods=1).min()).max() * 100
+
+    return [average_year_return_gross, average_year_return_net, average_year_std, average_year_sharpe, max_daily_dd]
+
+def price_to_stats(price, df_pred=None):
+
+    if df_pred is not None:
+        first_date = df_pred.index[0]
+        last_date = df_pred.index[-1]
+        daily_ret = price.pct_change().shift(1).loc[first_date:last_date]
+    else:
+        daily_ret = price.pct_change().shift(1)
+    perf = (daily_ret + 1).cumprod()
+
+    average_year_return_gross = daily_ret.mean() * 252 * 100
+    average_year_return_net = average_year_return_gross
+
+    average_year_std = daily_ret.std() * np.sqrt(256) * 100
+    average_year_sharpe = average_year_return_net / average_year_std
+
+    dd_window = 252
+    roll_max = perf.rolling(dd_window).max()
+    daily_dd = perf / roll_max - 1
+    max_daily_dd = np.abs(daily_dd.rolling(dd_window, min_periods=1).min()).max() * 100
+
+    return [average_year_return_gross, average_year_return_net, average_year_std, average_year_sharpe, max_daily_dd]
+
+
+
 def resume_backtest(df_pred_dict, bench_price, price):
 
     daily_returns = price.pct_change().shift(1)
     perf_bench = price_to_perf(bench_price.loc[next(iter(df_pred_dict.items()))[1].index[0]:next(iter(df_pred_dict.items()))[1].index[-1]], log=False)
 
-    bench_stats = perf_to_stat(perf_bench, perf_bench)
+    # bench_stats = perf_to_stat(perf_bench, perf_bench)
+    bench_stats = price_to_stats(bench_price, df_pred_dict['Ensemble'])
     stats = []
     stats.append(bench_stats + [0])
     for model_name in df_pred_dict:
-        perf_gross = pred_to_perf(df_pred_dict[model_name], daily_returns, 0.)
-        perf_net = pred_to_perf(df_pred_dict[model_name], daily_returns, 0.0012)
+        # perf_gross = pred_to_perf(df_pred_dict[model_name], daily_returns, 0.)
+        # perf_net = pred_to_perf(df_pred_dict[model_name], daily_returns, 0.0012)
         
         turnover_num = turnover(df_pred_dict[model_name])
-        stats.append(perf_to_stat(perf_gross, perf_net) + [turnover_num])
+        # stats.append(perf_to_stat(perf_gross, perf_net) + [turnover_num])
+        stats.append(perf_to_stat_2(df_pred_dict[model_name], daily_returns, 0.0012) + [turnover_num])
     stats = np.array(stats)
 
     df_stats = pd.DataFrame(data=stats, columns=['Gross avg. annual return (%)', 'Net avg. annual return (%)', 

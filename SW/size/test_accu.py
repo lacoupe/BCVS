@@ -1,14 +1,11 @@
 from data import get_price_data
 from test import get_training_processed_data
 from train_test import train, output_to_loss, output_to_accu
-from models import MLP
-import pandas as pd
-import numpy as np
-from tqdm import tqdm
+from models import MLP, ConvNet, LSTM
 from sklearn.model_selection import train_test_split
 import torch
 
-def tune_model():
+def test_model():
 
     # Get data
     price, _, df_input_all = get_price_data()
@@ -16,7 +13,7 @@ def tune_model():
     # Data parameters
     rebalance_freq = 'W-FRI'
     input_period = 42
-    training_window = 6
+    training_window = 8
 
     # Process data
     X, y = get_training_processed_data(df_input_all, price, rebalance_freq, input_period, training_window)
@@ -34,27 +31,33 @@ def tune_model():
     X_test = X_test.to(device)
     y_test = y_test.to(device)
 
-    # Grid parameters
-    learning_rates = [5e-3, 1e-2]
-    weight_decays = [5e-4]
-    dropouts = [0.25, 0.3]
-    nb_epochs = [100, 200]
-
-    # Fixed ML parameters
-    # nb_epochs = 100
+    eta_mlp = 1e-3
+    eta_convnet = 1e-3
+    eta_lstm = 1e-3
+    weight_decay = 1e-5
+    dropout = 0.2
+    nb_epochs = 100
     batch_size = 5
-
+    verbose = 2
+    i = 0
+    
+    model_name = 'LSTM'
     dim1, dim2, dim3 = X.size(1), X.size(2), X.size(3)
+    if model_name == 'MLP':
+        eta = eta_mlp
+        model = MLP(dim1, dim2, dim3, dropout)
+    elif model_name == 'ConvNet':
+        eta = eta_convnet
+        model = ConvNet(dim1, dim2, dim3, dropout)
+    elif model_name == 'LSTM':
+        eta = eta_lstm
+        model = LSTM(input_size=dim2 * dim3, output_size=dim2, device=device, pdrop=dropout)
 
-    tuning_list = []
-    for epoch in tqdm(nb_epochs, position=0):
-        for lr in tqdm(learning_rates, leave=False, position=1):
-            for w in tqdm(weight_decays, leave=False, position=2):
-                for drop in tqdm(dropouts, leave=False, position=3):
-                    model = MLP(dim1, dim2, dim3, pdrop=drop).to(device)
-                    train(model, X_train, y_train, epoch, device=device, batch_size=batch_size, eta=lr, weight_decay=w, verbose=0)
-                    tuning_list.append([lr, w, drop, epoch, np.round(output_to_loss(model, X_test, y_test).item(), 2), np.round(output_to_accu(model, X_test, y_test), 2)])
-    print(pd.DataFrame(data=tuning_list, columns=['Learning_rate', 'Weight_decay', 'Dropout', 'Nb_epochs', 'Loss', 'Accuracy']).sort_values('Loss').to_string(index=False))
+    train(model, X_train, y_train, nb_epochs=nb_epochs, device=device, X_test=X_test, y_test=y_test, i=i, batch_size=batch_size, eta=eta, 
+        weight_decay=weight_decay, verbose=verbose, classification=True)
+
+    print(f'Accuracy on train set :{output_to_accu(model, X_train, y_train):.2f}')
+    print(f'Accuracy on train set :{output_to_accu(model, X_test, y_test):.2f}')
 
 if __name__ == "__main__":
-    tune_model()
+    test_model()

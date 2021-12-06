@@ -1,9 +1,10 @@
+from numpy.core.numeric import True_
 import pandas as pd
 import numpy as np
 import torch
 from dateutil.relativedelta import relativedelta
 from helpers import last_friday, last_month
-from models import MLP, ConvNet, LSTM
+from models import MLP, ConvNet, LSTM, MLP_REG, ConvNet_REG, LSTM_REG
 from train_test import train
 from data import get_price_data
 pd.set_option('display.max_columns', None)
@@ -12,7 +13,7 @@ pd.set_option('display.max_rows', None)
 # import os, sys
 # sys.path.append(os.path.join(os.path.dirname(__file__)))
 
-def get_training_processed_data(df_input_all, price, rebalance_freq, input_period, training_window):
+def get_training_processed_data(df_input_all, price, rebalance_freq, input_period, training_window, classification=True):
 
     last_date = price.index[-1]
 
@@ -26,7 +27,10 @@ def get_training_processed_data(df_input_all, price, rebalance_freq, input_perio
 
     # Target data
     returns = price[:last_date_train].pct_change().shift(1).resample(rebalance_freq).agg(lambda x: (x + 1).prod() - 1)
-    best_pred = returns.rank(axis=1).replace({1: 0., 2: 0., 3: 1.}).shift(-1)
+    if classification:
+        best_pred = returns.rank(axis=1).replace({1: 0., 2: 0., 3: 1.}).shift(-1)
+    else:
+        best_pred = returns.shift(-1)
 
     if rebalance_freq == 'M':
         start_date = last_month(last_date_train - relativedelta(years=training_window))
@@ -39,11 +43,11 @@ def get_training_processed_data(df_input_all, price, rebalance_freq, input_perio
         # start_date_input = start_date - relativedelta(days=input_period)
         # start_date_input = start_date_input - relativedelta(days=(start_date_input.weekday()))
         start_date_input = price.loc[:start_date].iloc[-input_period:].index[0]
-
+    
 
     df_output = best_pred.loc[start_date:].dropna()
     df_input = df_input_all.loc[start_date_input:df_output.index[-1]]
-    
+
     X = []
     for idx in df_output.index:
         # If we rebalance monthly, the input data will be weekly data
@@ -57,7 +61,7 @@ def get_training_processed_data(df_input_all, price, rebalance_freq, input_perio
             
         X_period = df_input_period.values.reshape(input_period, num_tickers, num_features)
         X.append(X_period)
-        
+
     X = np.array(X)
     y = df_output.values
     X, y = torch.from_numpy(X).float(), torch.from_numpy(y).float()
@@ -65,12 +69,14 @@ def get_training_processed_data(df_input_all, price, rebalance_freq, input_perio
     return X, y
 
 
-def strat(df_input_all, price, rebalance_freq, model_name='MLP', nb_epochs=50, input_period=8, training_window=5, batch_size=1, verbose=0, eta=1e-3, weight_decay=1e-5):
+def strat(df_input_all, price, rebalance_freq, model_name='MLP', nb_epochs=50, 
+            input_period=8, training_window=5, batch_size=1, verbose=0, eta_mlp=1e-3, eta_convnet=1e-3, eta_lstm=1e-3,
+            weight_decay=1e-5, classification=True):
 
     num_tickers = len(df_input_all.columns.get_level_values(0).unique())
     num_features = len(df_input_all.columns.get_level_values(1).unique())
 
-    X, y = get_training_processed_data(df_input_all, price, rebalance_freq, input_period, training_window)
+    X, y = get_training_processed_data(df_input_all, price, rebalance_freq, input_period, training_window, classification)
 
     mean = X.mean(dim=[0, 1, 2], keepdim=True)
     std = X.std(dim=[0, 1, 2], keepdim=True)
@@ -80,17 +86,30 @@ def strat(df_input_all, price, rebalance_freq, model_name='MLP', nb_epochs=50, i
     X = X.to(device)
     y = y.to(device)
 
-    # Initialize ML models only at first iteration
     dim1, dim2, dim3 = X.size(1), X.size(2), X.size(3)
-    if model_name == 'MLP':
-        model = MLP(dim1, dim2, dim3)
-    elif model_name == 'ConvNet':
-        model = ConvNet(dim1, dim2, dim3)
-    elif model_name == 'LSTM':
-        model = LSTM(input_size=num_tickers * num_features, output_size=num_tickers, device=device)
+    if classification:
+        if model_name == 'MLP':
+            eta = eta_mlp
+            model = MLP(dim1, dim2, dim3)
+        elif model_name == 'ConvNet':
+            eta = eta_convnet
+            model = ConvNet(dim1, dim2, dim3)
+        elif model_name == 'LSTM':
+            eta = eta_lstm
+            model = LSTM(input_size=num_tickers * num_features, output_size=num_tickers, device=device)
+    else:
+        if model_name == 'MLP':
+            eta = eta_mlp
+            model = MLP_REG(dim1, dim2, dim3)
+        elif model_name == 'ConvNet':
+            eta = eta_convnet
+            model = ConvNet_REG(dim1, dim2, dim3)
+        elif model_name == 'LSTM':
+            eta = eta_lstm
+            model = LSTM_REG(input_size=num_tickers * num_features, output_size=num_tickers, device=device)
     model.to(device)
 
-    train(model, X, y, nb_epochs, batch_size=batch_size, eta=eta, verbose=verbose, weight_decay=weight_decay)
+    train(model, X, y, nb_epochs=nb_epochs, device=device, batch_size=batch_size, eta=eta, verbose=verbose, weight_decay=weight_decay, classification=classification)
 
     # Today output
     if rebalance_freq == 'M':
@@ -103,8 +122,6 @@ def strat(df_input_all, price, rebalance_freq, model_name='MLP', nb_epochs=50, i
     X = df_input_period.values.reshape(input_period, num_tickers, num_features)
     X = torch.from_numpy(X).float()
     X = X.view(1, X.size(0), X.size(1), X.size(2)).to(device)
-    # test_mean = X.mean(dim=[0, 1, 2], keepdim=True)
-    # test_std = X.std(dim=[0, 1, 2], keepdim=True)
     X = X.sub_(mean).div_(std)
 
     model.eval()
@@ -115,20 +132,26 @@ def strat(df_input_all, price, rebalance_freq, model_name='MLP', nb_epochs=50, i
 def run():
     price, _, df_X = get_price_data()
 
-    models_list = ['MLP', 'ConvNet', 'LSTM']
+    # models_list = ['MLP', 'ConvNet', 'LSTM']
     # models_list = ['MLP', 'ConvNet']
+    models_list = ['LSTM']
 
     output = pd.DataFrame(index=['Ensemble'], columns=price.columns)
 
     batch_size = 10
-    training_window = 5
-    nb_epochs = 150
+    training_window = 10
+    nb_epochs = 200
     verbose = 4
     rebalance_freq = 'W-FRI'
     input_period_days = 42
     input_period_weeks = 8
-    eta = 5e-3
+
+    eta_mlp = 1e-3
+    eta_convnet = 1e-3
+    eta_lstm = 1e-3
+
     weight_decay = 1e-4
+    classification = True
 
     if rebalance_freq == 'M':
         input_period = input_period_weeks
@@ -140,7 +163,9 @@ def run():
         df_output = strat(df_input_all=df_X, price=price, rebalance_freq=rebalance_freq, 
                           model_name=model_name, nb_epochs=nb_epochs, 
                           input_period=input_period, batch_size=batch_size,
-                          training_window=training_window, verbose=verbose, eta=eta, weight_decay=weight_decay)
+                          training_window=training_window, verbose=verbose, 
+                          eta_mlp=eta_mlp, eta_convnet=eta_convnet, eta_lstm=eta_lstm, weight_decay=weight_decay,
+                          classification=classification)
         output = pd.concat([output, df_output])
         
         if i == 0:
@@ -152,7 +177,7 @@ def run():
 
     # Results
     print(32 * '*')
-    print(output.round(2))
+    print(output.round(6))
     print(32 * '*')
 
 if __name__ == "__main__":

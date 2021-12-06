@@ -32,15 +32,21 @@ def get_price_data():
     # ma100 = price.rolling(window=100).mean()
     # ma50 = price.rolling(window=50).mean()
 
+    # vol12 = np.log(price.rolling(window=21 * 12).std() / price.rolling(window=21 * 12).std().shift(1))
+    # vol6 = np.log(price.rolling(window=21 * 6).std() / price.rolling(window=21 * 6).std().shift(1))
+    # vol1 = np.log(price.rolling(window=21 * 1).std() / price.rolling(window=21 * 1).std().shift(1))
+
     vol12 = price.rolling(window=21 * 12).std()
     vol6 = price.rolling(window=21 * 6).std()
     vol1 = price.rolling(window=21 * 1).std()
 
-    mom12 = price.pct_change(periods=21 * 12)
-    mom6 = price.pct_change(periods=21 * 6)
-    mom1 = price.pct_change(periods=21 * 1)
+    # mom12 = price.pct_change(periods=21 * 12)
+    # mom6 = price.pct_change(periods=21 * 6)
+    # mom1 = price.pct_change(periods=21 * 1)
 
-    bench_mom = bench_price.pct_change(periods=21)
+    mom12 = np.log(price.rolling(21 * 12).apply(lambda x: x[-1] / x[0]))  / (21 * 12)
+    mom6 = np.log(price.rolling(21 * 6).apply(lambda x: x[-1] / x[0]))  / (21 * 6)
+    mom1 = np.log(price.rolling(21 * 1).apply(lambda x: x[-1] / x[0]))  / (21 * 1)
 
     upper_bollinger = price.rolling(20).mean() + 2 * price.rolling(20).std()
     lower_bollinger = price.rolling(20).mean() - 2 * price.rolling(20).std()
@@ -49,7 +55,7 @@ def get_price_data():
     
     RSI14 = RSI(price, 14)
     RSI9 = RSI(price, 9)
-    RSI3 = RSI(price, 3)
+    # RSI3 = RSI(price, 3)
 
     ema_12 = price.ewm(span=12).mean()
     ema_26 = price.ewm(span=26).mean()
@@ -63,13 +69,14 @@ def get_price_data():
                             ma50[col], ma100[col], ma200[col],
                             mom12[col], mom6[col], mom1[col],
                             vol12[col], vol6[col], vol1[col],
-                            RSI14[col], RSI9[col], RSI3[col], 
+                            RSI14[col], RSI9[col], #RSI3[col], 
                             MACD[col], MACD_diff[col], upper_boll_diff[col], lower_boll_diff[col]
-                            ],
-                            axis=1).iloc[252:]
+                            ], axis=1).iloc[252:]
         df_temp.columns = ['ma50', 'ma100', 'ma200', 'mom12', 'mom6', 'mom1',
-                           'vol12', 'vol6', 'vol1', 'RSI14', 'RSI9', 'RSI3', 'MACD', 'MACD_diff', 'upper_boll_diff', 'lower_boll_diff'
+                           'vol12', 'vol6', 'vol1', 'RSI14', 'RSI9', 'MACD', 'MACD_diff', 'upper_boll_diff', 'lower_boll_diff'
                            ]
+        # df_temp = price[col]
+        # df_temp.columns = ['price']
         df_dict[col] = df_temp
 
     df_input = pd.concat(df_dict, axis=1).dropna(axis=0, how='any')

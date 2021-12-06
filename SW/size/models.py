@@ -3,7 +3,7 @@ from torch import nn
 
 
 class MLP(nn.Module):
-    def __init__(self, dim1, dim2, dim3, pdrop=0.25, hidden_size1=15, hidden_size2=10, hidden_size3=10):
+    def __init__(self, dim1, dim2, dim3, pdrop=0.2, hidden_size1=20, hidden_size2=15, hidden_size3=10):
         super().__init__()
 
         self.fc1 = nn.Linear(dim1 * dim2 * dim3, hidden_size1)
@@ -22,7 +22,8 @@ class MLP(nn.Module):
         x = self.relu(self.drop(self.bn1(self.fc1(x))))
         x = self.relu(self.drop(self.bn2(self.fc2(x))))
         x = self.relu(self.drop(self.fc3(x)))
-        x = self.softmax(self.fc4(x))        
+        x = self.softmax(self.fc4(x))       
+
         return x
 
     
@@ -66,14 +67,14 @@ class ConvNet(nn.Module):
     
 class LSTM(nn.Module):
 
-    def __init__(self, input_size, output_size, device, hidden_size=10, num_layers=2, dropout=0.2):
+    def __init__(self, input_size, output_size, device, hidden_size=8, num_layers=2, pdrop=0.2):
         super(LSTM, self).__init__()
         
         self.input_size = input_size
         self.output_size = output_size
         self.hidden_size = hidden_size
         self.num_layers = num_layers
-        self.dropout = dropout
+        self.dropout = pdrop
         self.device = device
         self.lstm = nn.LSTM(input_size=self.input_size, hidden_size=self.hidden_size, 
                             num_layers=self.num_layers, batch_first=True, dropout=self.dropout)
@@ -91,4 +92,88 @@ class LSTM(nn.Module):
         x = self.softmax(self.fc(x[:, -1, :]))
         
         return x
+
+
+class MLP_REG(nn.Module):
+    def __init__(self, dim1, dim2, dim3, pdrop=0.2, hidden_size1=20, hidden_size2=15, hidden_size3=10):
+        super().__init__()
+
+        self.fc1 = nn.Linear(dim1 * dim2 * dim3, hidden_size1)
+        self.fc2 = nn.Linear(hidden_size1, hidden_size2)
+        self.fc3 = nn.Linear(hidden_size2, hidden_size3)
+        self.fc4 = nn.Linear(hidden_size3, dim2)
+        self.drop = nn.Dropout(pdrop)
+        self.relu = nn.ReLU()
+        self.bn1 = nn.BatchNorm1d(hidden_size1)
+        self.bn2 = nn.BatchNorm1d(hidden_size2)
+
+    def forward(self, x):
+        x = x.flatten(start_dim=1)
+        x = self.relu(self.drop(self.bn1(self.fc1(x))))
+        x = self.relu(self.drop(self.bn2(self.fc2(x))))
+        x = self.relu(self.drop(self.fc3(x)))
+        x = self.fc4(x)   
+         
+        return x
    
+
+class ConvNet_REG(nn.Module):
+    def __init__(self, dim1, dim2, dim3, dim1_kernel1=3, dim2_kernel1=2, dim1_kernel2=2, dim2_kernel2=2, pdrop=0.3):
+        super().__init__()
+        
+        self.dim1 = dim1
+        self.dim2 = dim2
+        self.dim3 = dim3
+        
+        self.conv1 = nn.Conv3d(1, 8, kernel_size=(dim1_kernel1, dim2_kernel1, dim3))
+        self.conv2 = nn.Conv3d(8, 16, kernel_size=(dim1_kernel2, dim2_kernel2, 1))
+        self.pool = nn.MaxPool2d(kernel_size=2)
+        
+        self.fc1 = nn.Linear(16 * (dim1 - dim1_kernel1 - dim1_kernel2 + 2) * (dim2 - dim2_kernel1 - dim2_kernel2 + 2), 10)
+        self.fc2 = nn.Linear(10, self.dim2)
+        
+        self.relu = nn.ReLU()
+        self.drop = nn.Dropout(pdrop)
+        self.drop3d = nn.Dropout3d(pdrop)
+        self.bn3d1 = nn.BatchNorm3d(8)
+        self.bn3d2 = nn.BatchNorm3d(16)
+
+    def forward(self, x):
+        
+        x = x.view(x.size(0), 1, x.size(1), x.size(2), x.size(3))
+    
+        x = self.relu(self.drop3d(self.bn3d1(self.conv1(x))))
+        x = self.relu(self.drop3d(self.bn3d2(self.conv2(x))))
+    
+        x = x.flatten(start_dim=1)
+        x = self.relu(self.drop(self.fc1(x)))
+        x = self.fc2(x)
+
+        return x
+
+
+class LSTM_REG(nn.Module):
+
+    def __init__(self, input_size, output_size, device, hidden_size=8, num_layers=2, dropout=0.2):
+        super().__init__()
+        
+        self.input_size = input_size
+        self.output_size = output_size
+        self.hidden_size = hidden_size
+        self.num_layers = num_layers
+        self.dropout = dropout
+        self.device = device
+        self.lstm = nn.LSTM(input_size=self.input_size, hidden_size=self.hidden_size, 
+                            num_layers=self.num_layers, batch_first=True, dropout=self.dropout)
+        self.fc = nn.Linear(hidden_size, output_size)
+        self.relu = nn.ReLU()
+        
+    def forward(self, x):
+        h0 = torch.randn(self.num_layers, x.size(0), self.hidden_size).to(self.device)
+        c0 = torch.randn(self.num_layers, x.size(0), self.hidden_size).to(self.device)
+        x = x.view(x.size(0), x.size(1), x.size(2) * x.size(3))
+        x, _ = self.lstm(x, (h0.detach(), c0.detach()))
+        x = self.relu(x)
+        x = self.fc(x[:, -1, :])
+        
+        return x
