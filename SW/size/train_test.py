@@ -12,7 +12,7 @@ def output_to_accu(model, X, y):
     model.eval()
     nb_errors = 0
     for b in range(0, X.size(0)):
-        output = model(X.narrow(0, b, 1))
+        output, _ = model(X.narrow(0, b, 1))
         _, predicted_classes = output.max(1)
         for k in range(1):
             if predicted_classes[k] != y.max(1)[1][b]:
@@ -28,7 +28,7 @@ def output_to_loss(model, X, y):
     loss = 0
     criterion = nn.BCELoss()
     for b in range(0, X.size(0)):
-        output = model(X.narrow(0, b, 1))
+        output, _ = model(X.narrow(0, b, 1))
         loss += criterion(output, y.narrow(0, b, 1))
     return (loss / X.size(0)).cpu()
 
@@ -97,11 +97,96 @@ def train(model, X_train, y_train, nb_epochs, device, X_test=None, y_test=None, 
             axs[1].plot(list(range(nb_epochs)), train_accu_list, label='Train accuracy')
             axs[1].plot(list(range(nb_epochs)), test_accu_list, label='Test accuracy')
             axs[1].legend()
+            plt.xlabel('Epoch')
+            plt.suptitle('Learning Curve ' + model.__class__.__name__, fontsize=15)
+            plt.tight_layout()
             plot_path = os.path.join(os.path.dirname(__file__)) + '/plots/learning_curve_' + model.__class__.__name__ + '.png'
             plt.savefig(plot_path)
             plt.show()
 
+
+def train_siamese(model, X_train, y_train, y_train_reg, nb_epochs, device, 
+                    X_test=None, y_test=None, i=None, eta=1e-3, weight_decay=0, 
+                    batch_size=1, verbose=0, gamma=0.4):
+    
+    optimizer = torch.optim.Adam(model.parameters(), lr=eta, weight_decay=weight_decay)
+    criterion = nn.BCELoss(reduction='none')
+    aux_criterion = nn.MSELoss()
+    model.train()
+    
+    if verbose in (1, 2):
+        train_accu_list = []
+        train_loss_list = []
+        test_accu_list = []
+        test_loss_list = []
+    
+    train_set = TensorDataset(X_train, y_train, y_train_reg)    
+    train_loader = DataLoader(train_set, batch_size=batch_size, shuffle=True, drop_last=True, num_workers=0)
+
+    class_count = np.unique(y_train.cpu(), axis=0, return_counts=True)[1]
+    weights = torch.tensor(class_count / sum(class_count)).to(device)
+
+    for e in (tqdm(range(nb_epochs)) if (verbose == 3) else range(nb_epochs)):
+        acc_loss = 0
+        model.train()
+        for train_input, train_target, returns in train_loader:
+            optimizer.zero_grad()
+            output, auxiliary = model(train_input)
+            # print(output.size())
+            # print(auxiliary.size())
+            # print(train_target.size())
+            loss = criterion(output, train_target)
+            loss = (loss * weights).mean()
+
+            auxiliary_1, auxiliary_2, auxiliary_3 = auxiliary.unbind(1)
+            target_ret_1, target_ret_2, target_ret_3 = returns.unbind(1)
+            # print(auxiliary_1.size())
+            # print(target_ret_1.size())
+            aux_loss = aux_criterion(auxiliary_1, target_ret_1) * weights[0] + \
+                       aux_criterion(auxiliary_2, target_ret_2) * weights[1] + \
+                       aux_criterion(auxiliary_3, target_ret_3) * weights[2]
+            combined_loss = loss + gamma * aux_loss
+
+            combined_loss.backward()
+            clip_grad_norm_(model.parameters(), 1)
+            optimizer.step()
             
+            if verbose in (2, 4):
+                acc_loss = acc_loss + combined_loss.item()
+
+        if verbose in (2, 4):
+            if (e % 5) == 0:
+                print('epoch', e + 1, 'loss :', np.round(acc_loss, 4), 'accuracy :', np.round(output_to_accu(model, X_train, y_train), 2), '%')
+
+        if verbose in (1, 2):
+            model.eval()
+            train_accu = output_to_accu(model, X_train, y_train)
+            train_accu_list.append(train_accu)
+            test_accu = output_to_accu(model, X_test, y_test)
+            test_accu_list.append(test_accu)
+            
+            train_loss = output_to_loss(model, X_train, y_train).detach().numpy()
+            train_loss_list.append(train_loss)
+            test_loss = output_to_loss(model, X_test, y_test).detach().numpy()
+            test_loss_list.append(test_loss)
+                    
+    if verbose in (1, 2):
+        if i in (0, 1, 2):
+            _, axs = plt.subplots(2, 1, figsize=(12,8))
+            axs[0].plot(list(range(nb_epochs)), train_loss_list, label='Train loss')
+            axs[0].plot(list(range(nb_epochs)), test_loss_list, label='Test loss')
+            axs[0].legend()
+            axs[1].plot(list(range(nb_epochs)), train_accu_list, label='Train accuracy')
+            axs[1].plot(list(range(nb_epochs)), test_accu_list, label='Test accuracy')
+            axs[1].legend()
+            plt.xlabel('Epoch')
+            plt.suptitle('Learning Curve ' + model.__class__.__name__, fontsize=15)
+            plt.tight_layout()
+            plot_path = os.path.join(os.path.dirname(__file__)) + '/plots/learning_curve_' + model.__class__.__name__ + '.png'
+            plt.savefig(plot_path)
+            plt.show()
+
+
 def test(model, X_test):
     
     prob = []

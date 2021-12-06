@@ -88,10 +88,76 @@ class LSTM(nn.Module):
         c0 = torch.randn(self.num_layers, x.size(0), self.hidden_size).to(self.device)
         x = x.view(x.size(0), x.size(1), x.size(2) * x.size(3))
         x, _ = self.lstm(x, (h0.detach(), c0.detach()))
-        x = self.relu(x)
         x = self.softmax(self.fc(x[:, -1, :]))
-        
+
         return x
+
+
+class SiameseLSTM(nn.Module):
+
+    def __init__(self, input_size, output_size, device, hidden_size=8, num_layers=2, pdrop=0.2):
+        super().__init__()
+        
+        self.device = device
+        self.input_size = input_size
+        self.output_size = output_size
+        self.hidden_size = hidden_size
+        self.num_layers = num_layers
+        self.dropout = pdrop
+        self.lstm = nn.LSTM(input_size=self.input_size, hidden_size=self.hidden_size, 
+                            num_layers=self.num_layers, batch_first=True, dropout=self.dropout)
+        self.fc_once = nn.Linear(hidden_size, 1)
+        self.fc1 = nn.Linear(3, 3)
+        self.fc2 = nn.Linear(3, 3)
+        self.sigmoid = nn.Sigmoid()
+        self.softmax = nn.Softmax(dim=1)
+        self.relu = nn.ReLU()
+        
+    def forward_once(self, x):
+        h0 = torch.randn(self.num_layers, x.size(0), self.hidden_size).to(self.device)
+        c0 = torch.randn(self.num_layers, x.size(0), self.hidden_size).to(self.device)
+        x, _ = self.lstm(x, (h0.detach(), c0.detach()))
+        x = self.fc_once(x[:, -1, :])
+        return x
+
+    def forward(self, x):
+        # print(x.size())
+        input1 = x[:, :, 0, :].view(x.size(0), x.size(1), x.size(3))
+        input2 = x[:, :, 1, :].view(x.size(0), x.size(1), x.size(3))
+        input3 = x[:, :, 2, :].view(x.size(0), x.size(1), x.size(3))
+        # print(input1.size())
+        
+        x1 = self.forward_once(input1)
+        x2 = self.forward_once(input2)
+        x3 = self.forward_once(input3)
+
+        auxiliary = torch.cat((x1, x2, x3), 1)
+
+        output = self.relu(self.fc1(auxiliary))
+        output = self.softmax(self.fc2(output))
+
+        return output, auxiliary
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 class MLP_REG(nn.Module):

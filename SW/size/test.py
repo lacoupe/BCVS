@@ -37,6 +37,10 @@ def get_training_processed_data(df_input_all, price, rebalance_freq, input_perio
     else:
         start_date = last_friday(last_date_train - relativedelta(years=training_window))
 
+    df_output = best_pred.loc[start_date:].dropna()
+    df_output_reg = returns.shift(-1).loc[start_date:].dropna()
+
+
     if rebalance_freq =='M':
         start_date_input = (start_date - relativedelta(weeks=input_period)).replace(day=1) 
     else:
@@ -44,8 +48,6 @@ def get_training_processed_data(df_input_all, price, rebalance_freq, input_perio
         # start_date_input = start_date_input - relativedelta(days=(start_date_input.weekday()))
         start_date_input = price.loc[:start_date].iloc[-input_period:].index[0]
     
-
-    df_output = best_pred.loc[start_date:].dropna()
     df_input = df_input_all.loc[start_date_input:df_output.index[-1]]
 
     X = []
@@ -64,9 +66,11 @@ def get_training_processed_data(df_input_all, price, rebalance_freq, input_perio
 
     X = np.array(X)
     y = df_output.values
-    X, y = torch.from_numpy(X).float(), torch.from_numpy(y).float()
+    y_reg = df_output_reg.values
 
-    return X, y
+    X, y, y_reg = torch.from_numpy(X).float(), torch.from_numpy(y).float(), torch.from_numpy(y_reg).float()
+
+    return X, y, y_reg
 
 
 def strat(df_input_all, price, rebalance_freq, model_name='MLP', nb_epochs=50, 
