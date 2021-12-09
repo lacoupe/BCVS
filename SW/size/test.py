@@ -2,77 +2,14 @@ from numpy.core.numeric import True_
 import pandas as pd
 import numpy as np
 import torch
-from dateutil.relativedelta import relativedelta
-from helpers import last_friday, last_month
 from models import MLP, ConvNet, LSTM, MLP_REG, ConvNet_REG, LSTM_REG
 from train_test import train
-from data import get_price_data
+from data import get_price_data, get_training_processed_data
 pd.set_option('display.max_columns', None)
 pd.set_option('display.max_rows', None)
 
 # import os, sys
 # sys.path.append(os.path.join(os.path.dirname(__file__)))
-
-def get_training_processed_data(df_input_all, price, rebalance_freq, input_period, training_window, classification=True):
-
-    last_date = price.index[-1]
-
-    if rebalance_freq == 'M':
-        last_date_train = last_month(last_date - relativedelta(weeks=input_period))
-    else:
-        last_date_train = last_friday(price.index[-input_period])
-    
-    num_tickers = len(df_input_all.columns.get_level_values(0).unique())
-    num_features = len(df_input_all.columns.get_level_values(1).unique())
-
-    # Target data
-    # returns = price[:last_date_train].pct_change().shift(1).resample(rebalance_freq).agg(lambda x: (x + 1).prod() - 1)
-    returns = price[:last_date_train].shift(1).resample(rebalance_freq).apply(lambda x: np.log(x[-1] / x[0]) / len(x))
-    if classification:
-        # best_pred = returns.rank(axis=1).replace({1: 0., 2: 0., 3: 1.}).shift(-1)
-        best_pred = returns.rank(axis=1).replace({1: 0., 2: 1.}).shift(-1)
-    else:
-        best_pred = returns.shift(-1)
-
-    if rebalance_freq == 'M':
-        start_date = last_month(last_date_train - relativedelta(years=training_window))
-    else:
-        start_date = last_friday(last_date_train - relativedelta(years=training_window))
-
-    df_output = best_pred.loc[start_date:].dropna()
-    df_output_reg = returns.shift(-1).loc[start_date:].dropna()
-
-
-    if rebalance_freq =='M':
-        start_date_input = (start_date - relativedelta(weeks=input_period)).replace(day=1) 
-    else:
-        # start_date_input = start_date - relativedelta(days=input_period)
-        # start_date_input = start_date_input - relativedelta(days=(start_date_input.weekday()))
-        start_date_input = price.loc[:start_date].iloc[-input_period:].index[0]
-    
-    df_input = df_input_all.loc[start_date_input:df_output.index[-1]]
-
-    X = []
-    for idx in df_output.index:
-        # If we rebalance monthly, the input data will be weekly data
-        if rebalance_freq == 'M':
-            dayofweek = {0:'Monday', 1:'Tuesday', 2:'Wednesday', 3:'Thursday', 4:'Friday', 5:'Saturday', 6:'Sunday'}
-            reb_freq_input = 'W-' + dayofweek[df_input_all.index[-1].weekday()][:3].upper()
-            df_input_period = df_input.loc[:idx].resample(reb_freq_input).mean().iloc[-input_period:]
-        # If we rebalance weekly, the input data will be daily data
-        else:
-            df_input_period = df_input.loc[:idx].iloc[-input_period:]
-            
-        X_period = df_input_period.values.reshape(input_period, num_tickers, num_features)
-        X.append(X_period)
-
-    X = np.array(X)
-    y = df_output.values
-    y_reg = df_output_reg.values
-
-    X, y, y_reg = torch.from_numpy(X).float(), torch.from_numpy(y).float(), torch.from_numpy(y_reg).float()
-
-    return X, y, y_reg
 
 
 def strat(df_input_all, price, rebalance_freq, model_name='MLP', nb_epochs=50, 

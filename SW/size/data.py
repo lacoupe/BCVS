@@ -1,6 +1,9 @@
 import numpy as np
 import pandas as pd
 import os
+from helpers import last_friday, last_month
+from dateutil.relativedelta import relativedelta
+import torch
 
 
 def RSI(price, window):
@@ -16,72 +19,113 @@ def RSI(price, window):
 
 def get_price_data():
     data_path = os.path.join(os.path.dirname(__file__)) + '/data/prices.csv'
-    indices_price_excel = pd.read_csv(data_path, index_col=0, parse_dates=True)
-    # indices_price_excel.drop(columns=['SMIMC Index'], inplace=True)
+    indices_price_excel = pd.read_csv(data_path, index_col=0, parse_dates=True).dropna()
     indices_price_excel.head()
-    indices_price_excel.columns = ['SPI', 'SMALL', 'MID', 'LARGE']
 
-    bench_price = indices_price_excel['SPI']
-    # price = indices_price_excel[indices_price_excel.columns[1:]].shift(1)
-    price = indices_price_excel[['SMALL', 'LARGE']].shift(1)
+    bench_price = indices_price_excel['SPI Index'].shift(1)
+    target_prices = indices_price_excel[['SPI19 Index', 'SMCI Index', 'SPI21 Index']].shift(1)
+    target_prices.columns = ['SMALL', 'MID', 'LARGE']
+    features = indices_price_excel[indices_price_excel.columns[1:-1]].shift(1)
 
-    weeky_returns = price.rolling(5).apply(lambda x: np.log(x[-1] / x[0]) / len(x))
+    weeky_returns = features.rolling(5).apply(lambda x: np.log(x[-1] / x[0]) / len(x))
 
-    ma200 = np.log(price / price.rolling(window=200).mean())
-    ma100 = np.log(price / price.rolling(window=100).mean())
-    ma50 = np.log(price / price.rolling(window=50).mean())
+    ma50 = np.log(features / features.rolling(window=50).mean())
 
-    # ma200 = price.rolling(window=200).mean()
-    # ma100 = price.rolling(window=100).mean()
-    # ma50 = price.rolling(window=50).mean()
+    vol1 = features.rolling(window=21 * 1).std()
 
-    # vol12 = np.log(price.rolling(window=21 * 12).std() / price.rolling(window=21 * 12).std().shift(1))
-    # vol6 = np.log(price.rolling(window=21 * 6).std() / price.rolling(window=21 * 6).std().shift(1))
-    # vol1 = np.log(price.rolling(window=21 * 1).std() / price.rolling(window=21 * 1).std().shift(1))
+    mom1 = np.log(features.rolling(21 * 1).apply(lambda x: x[-1] / x[0]))  / (21 * 1)
 
-    vol12 = price.rolling(window=21 * 12).std()
-    vol6 = price.rolling(window=21 * 6).std()
-    vol1 = price.rolling(window=21 * 1).std()
-
-    # mom12 = price.pct_change(periods=21 * 12)
-    # mom6 = price.pct_change(periods=21 * 6)
-    # mom1 = price.pct_change(periods=21 * 1)
-
-    mom12 = np.log(price.rolling(21 * 12).apply(lambda x: x[-1] / x[0]))  / (21 * 12)
-    mom6 = np.log(price.rolling(21 * 6).apply(lambda x: x[-1] / x[0]))  / (21 * 6)
-    mom1 = np.log(price.rolling(21 * 1).apply(lambda x: x[-1] / x[0]))  / (21 * 1)
-
-    upper_bollinger = price.rolling(20).mean() + 2 * price.rolling(20).std()
-    lower_bollinger = price.rolling(20).mean() - 2 * price.rolling(20).std()
-    upper_boll_diff = np.log(price / upper_bollinger)
-    lower_boll_diff = np.log(price / lower_bollinger)
+    # upper_bollinger = features.rolling(20).mean() + 2 * features.rolling(20).std()
+    # lower_bollinger = features.rolling(20).mean() - 2 * features.rolling(20).std()
+    # upper_boll_diff = np.log(features / upper_bollinger)
+    # lower_boll_diff = np.log(features / lower_bollinger)
     
-    RSI14 = RSI(price, 14)
-    RSI9 = RSI(price, 9)
-    # RSI3 = RSI(price, 3)
+    RSI9 = RSI(features, 9)
 
-    ema_12 = price.ewm(span=12).mean()
-    ema_26 = price.ewm(span=26).mean()
+    ema_12 = features.ewm(span=12).mean()
+    ema_26 = features.ewm(span=26).mean()
     MACD = ema_12 - ema_26
     MACD_diff = MACD - MACD.ewm(span=9).mean()
 
     df_dict = {}
     df_input = pd.DataFrame()
-    for col in price.columns:
+    for col in features.columns:
         df_temp = pd.concat([
-                            ma50[col], ma100[col], ma200[col],
-                            mom12[col], mom6[col], mom1[col],
-                            vol12[col], vol6[col], vol1[col],
-                            RSI14[col], RSI9[col], #RSI3[col], 
-                            MACD[col], MACD_diff[col], upper_boll_diff[col], lower_boll_diff[col], weeky_returns[col]
-                            ], axis=1).iloc[252:]
-        df_temp.columns = ['ma50', 'ma100', 'ma200', 'mom12', 'mom6', 'mom1',
-                           'vol12', 'vol6', 'vol1', 'RSI14', 'RSI9', 'MACD', 'MACD_diff', 'upper_boll_diff', 'lower_boll_diff', 'weekly_returns'
-                           ]
-        # df_temp = price[col]
-        # df_temp.columns = ['price']
+                            ma50[col], mom1[col], vol1[col], RSI9[col], MACD[col], MACD_diff[col], weeky_returns[col]
+                            ], axis=1)
+        df_temp.columns = ['ma50', 'mo1', 'vol1', 'RSI9', 'MACD', 'MACD_diff', 'weekly_returns']
         df_dict[col] = df_temp
 
     df_input = pd.concat(df_dict, axis=1).dropna(axis=0, how='any')
 
-    return price, bench_price, df_input
+    return bench_price, df_input, target_prices
+
+
+def get_training_processed_data(df_input_all, target_prices, rebalance_freq, input_period, training_window, classification=True):
+
+    last_date = target_prices.index[-1]
+
+    if rebalance_freq == 'M':
+        last_date_train = last_month(last_date - relativedelta(weeks=input_period))
+    else:
+        last_date_train = last_friday(target_prices.index[-input_period])
+    
+    num_tickers = len(df_input_all.columns.get_level_values(0).unique())
+    num_features = len(df_input_all.columns.get_level_values(1).unique())
+
+    # Target data
+    # returns = price[:last_date_train].pct_change().shift(1).resample(rebalance_freq).agg(lambda x: (x + 1).prod() - 1)
+    returns = target_prices[:last_date_train].resample(rebalance_freq).apply(lambda x: np.log(x[-1] / x[0]) / len(x))
+    if classification:
+        best_pred = returns.rank(axis=1).replace({1: 0., 2: 0., 3: 1.}).shift(-1)
+        # best_pred = returns.rank(axis=1).replace({1: 0., 2: 1.}).shift(-1)
+    else:
+        best_pred = returns.shift(-1)
+
+    if rebalance_freq == 'M':
+        start_date = last_month(last_date_train - relativedelta(years=training_window))
+    else:
+        start_date = last_friday(last_date_train - relativedelta(years=training_window))
+
+    df_output = best_pred.loc[start_date:].dropna()
+    df_output_reg = returns.shift(-1).loc[start_date:].dropna()
+
+    input_returns = target_prices.rolling(5).apply(lambda x: np.log(x[-1] / x[0]) / len(x)).loc[start_date:].dropna()
+
+
+    if rebalance_freq =='M':
+        start_date_input = (start_date - relativedelta(weeks=input_period)).replace(day=1) 
+    else:
+        # start_date_input = start_date - relativedelta(days=input_period)
+        # start_date_input = start_date_input - relativedelta(days=(start_date_input.weekday()))
+        start_date_input = target_prices.loc[:start_date].iloc[-input_period:].index[0]
+    
+    df_input = df_input_all.loc[start_date_input:df_output.index[-1]]
+    df_input_reg = target_prices.rolling(5).apply(lambda x: np.log(x[-1] / x[0]) / len(x)).loc[start_date_input:df_output.index[-1]]
+
+    X = []
+    X_reg = []
+    for idx in df_output.index:
+        # If we rebalance monthly, the input data will be weekly data
+        if rebalance_freq == 'M':
+            dayofweek = {0:'Monday', 1:'Tuesday', 2:'Wednesday', 3:'Thursday', 4:'Friday', 5:'Saturday', 6:'Sunday'}
+            reb_freq_input = 'W-' + dayofweek[df_input_all.index[-1].weekday()][:3].upper()
+            df_input_period = df_input.loc[:idx].resample(reb_freq_input).mean().iloc[-input_period:]
+        # If we rebalance weekly, the input data will be daily data
+        else:
+            df_input_period = df_input.loc[:idx].iloc[-input_period:]
+            df_input_period_reg = df_input_reg.loc[:idx].iloc[-input_period:]
+            
+        X_period = df_input_period.values.reshape(input_period, num_tickers, num_features)
+        X_period_reg = df_input_period_reg.values
+        X.append(X_period)
+        X_reg.append(X_period_reg)
+
+    X = np.array(X)
+    X_reg = np.array(X_reg)
+    y = df_output.values
+    y_reg = df_output_reg.values
+
+    X, X_returns, y, y_reg = torch.from_numpy(X).float(), torch.from_numpy(X_reg).float(), torch.from_numpy(y).float(), torch.from_numpy(y_reg).float()
+
+    return X, X_returns, y, y_reg

@@ -191,20 +191,19 @@ class SiameseLSTM(nn.Module):
         x = self.fc_once(x[:, -1, :])
         return x
 
-    def forward(self, x):
+    def forward(self, x, x_reg):
 
         # Forward Regression with weight sharing
-        input1 = x[:, :, 0, -1].view(x.size(0), x.size(1), 1).to(self.device)
-        input2 = x[:, :, 1, -1].view(x.size(0), x.size(1), 1).to(self.device)
-        # input3 = x[:, :, 2, -1].view(x.size(0), x.size(1), 1).to(self.device)
+        input1 = x_reg[:, :, 0].view(x_reg.size(0), x_reg.size(1), 1).to(self.device)
+        input2 = x_reg[:, :, 1].view(x_reg.size(0), x_reg.size(1), 1).to(self.device)
+        input3 = x_reg[:, :, 2].view(x_reg.size(0), x_reg.size(1), 1).to(self.device)
         
         x1 = self.forward_once(input1)
         x2 = self.forward_once(input2)
-        # x3 = self.forward_once(input3)
+        x3 = self.forward_once(input3)
 
-        # auxiliary = torch.cat((x1, x2, x3), 1)
-        auxiliary = torch.cat((x1, x2), 1)
-        # print(auxiliary.size())
+        auxiliary = torch.cat((x1, x2, x3), 1)
+
         # Forward Classification
         h0 = torch.randn(self.num_layers, x.size(0), self.hidden_size).to(self.device)
         c0 = torch.randn(self.num_layers, x.size(0), self.hidden_size).to(self.device)
@@ -212,8 +211,8 @@ class SiameseLSTM(nn.Module):
         output, _ = self.lstm2(output, (h0.detach(), c0.detach()))
         output = self.softmax(self.fc(output[:, -1, :]))
 
+        # Final classification
         output = torch.cat((auxiliary, output), 1)
-        # print(output.size())
         output = self.relu(self.fc_last(output))
         output = self.softmax(self.classifier(output))
 
