@@ -161,10 +161,10 @@ def train_siamese(model, X_train, y_train, y_train_reg, nb_epochs, device,
                       'class loss :', np.round(acc_loss, 4), 
                       'reg loss :', np.round(acc_aux_loss, 4), 
                       'accuracy :', np.round(output_to_accu(model, X_train, y_train), 2), '%')
-                print('prediction of returns \n ', auxiliary[:2].detach().numpy())
-                print('true returns \n', returns[:2].detach().numpy())
-                print('output \n', output[:2].detach().numpy())
-                print('true prediction \n', train_target[:2].detach().numpy())
+                print('prediction of returns \n ', auxiliary[:2].cpu().detach().numpy())
+                print('true returns \n', returns[:2].cpu().detach().numpy())
+                print('output \n', output[:2].cpu().detach().numpy())
+                print('true prediction \n', train_target[:2].cpu().detach().numpy())
 
         if verbose in (1, 2):
             model.eval()
