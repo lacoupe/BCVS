@@ -15,11 +15,11 @@ def test_model():
     # Data parameters
     rebalance_freq = 'W-FRI'
     input_period = 42
-    training_window = 8
+    training_window = 10
 
     # Process data
     X, y, y_reg = get_training_processed_data(df_input_all, price, rebalance_freq, input_period, training_window)
-    train_indices, test_indices, _, _ = train_test_split(range(len(y)), y, stratify=y, test_size=0.3, random_state=1)
+    train_indices, test_indices, _, _ = train_test_split(range(len(y)), y, stratify=y, test_size=0.4, random_state=1)
     X_train, y_train, y_train_reg, X_test, y_test = X[train_indices], y[train_indices], y_reg[train_indices], X[test_indices], y[test_indices]
 
     X_mean = X_train.mean(dim=[0, 1, 2], keepdim=True)
@@ -48,11 +48,11 @@ def test_model():
 
     weight_decay = 1e-5
     dropout = 0.1
-    nb_epochs = 1000
-    batch_size = 10
+    nb_epochs = 200
+    batch_size = 15
     verbose = 4
     i = 0
-    gamma = 0.2
+    gamma = 0.5
     
     model_name = 'SiameseLSTM'
     # model_name = 'ConvNet'

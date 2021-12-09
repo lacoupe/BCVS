@@ -170,6 +170,9 @@ class SiameseLSTM(nn.Module):
                             num_layers=self.num_layers, batch_first=True, dropout=self.dropout)
         self.fc = nn.Linear(hidden_size, output_size)
 
+        # Final branch
+        self.fc_last = nn.Linear(6, 6)
+        self.classifier = nn.Linear(6, 3)
         self.sigmoid = nn.Sigmoid()
         self.softmax = nn.Softmax(dim=1)
         self.relu = nn.ReLU()
@@ -200,6 +203,10 @@ class SiameseLSTM(nn.Module):
         output = x.view(x.size(0), x.size(1), x.size(2) * x.size(3))
         output, _ = self.lstm2(output, (h0.detach(), c0.detach()))
         output = self.softmax(self.fc(output[:, -1, :]))
+
+        output = torch.cat((auxiliary, output), 1)
+        output = self.relu(self.fc_last(output))
+        output = self.softmax(self.classifier(output))
 
         return output, auxiliary
 
