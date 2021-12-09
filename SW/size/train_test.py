@@ -108,7 +108,7 @@ def train(model, X_train, y_train, nb_epochs, device, X_test=None, y_test=None, 
 
 
 def train_siamese(model, X_train, y_train, y_train_reg, nb_epochs, device, 
-                    X_test=None, y_test=None, i=None, eta=1e-3, weight_decay=0, 
+                    X_test=None, y_test=None, eta=1e-3, weight_decay=0, 
                     batch_size=1, verbose=0, gamma=0.4):
     
     optimizer = torch.optim.Adam(model.parameters(), lr=eta, weight_decay=weight_decay)
@@ -138,12 +138,14 @@ def train_siamese(model, X_train, y_train, y_train_reg, nb_epochs, device,
             loss = criterion(output, train_target)
             loss = (loss * weights).mean()
                 
-            auxiliary_1, auxiliary_2, auxiliary_3 = auxiliary.unbind(1)
-            target_ret_1, target_ret_2, target_ret_3 = returns.unbind(1)
+            # auxiliary_1, auxiliary_2, auxiliary_3 = auxiliary.unbind(1)
+            auxiliary_1, auxiliary_2 = auxiliary.unbind(1)
 
+            # target_ret_1, target_ret_2, target_ret_3 = returns.unbind(1)
+            target_ret_1, target_ret_2 = returns.unbind(1)
             aux_loss = aux_criterion(auxiliary_1, target_ret_1) * weights[0] + \
-                       aux_criterion(auxiliary_2, target_ret_2) * weights[1] + \
-                       aux_criterion(auxiliary_3, target_ret_3) * weights[2]
+                       aux_criterion(auxiliary_2, target_ret_2) * weights[1]# + \
+                    #    aux_criterion(auxiliary_3, target_ret_3) * weights[2]
 
             combined_loss = loss + gamma * aux_loss
 
@@ -173,26 +175,25 @@ def train_siamese(model, X_train, y_train, y_train_reg, nb_epochs, device,
             test_accu = output_to_accu(model, X_test, y_test)
             test_accu_list.append(test_accu)
             
-            train_loss = output_to_loss(model, X_train, y_train).detach().numpy()
-            train_loss_list.append(train_loss)
-            test_loss = output_to_loss(model, X_test, y_test).detach().numpy()
-            test_loss_list.append(test_loss)
+            # train_loss = output_to_loss(model, X_train, y_train).detach().numpy()
+            # train_loss_list.append(train_loss)
+            # test_loss = output_to_loss(model, X_test, y_test).detach().numpy()
+            # test_loss_list.append(test_loss)
                     
     if verbose in (1, 2):
-        if i in (0, 1, 2):
-            _, axs = plt.subplots(2, 1, figsize=(12,8))
-            axs[0].plot(list(range(nb_epochs)), train_loss_list, label='Train loss')
-            axs[0].plot(list(range(nb_epochs)), test_loss_list, label='Test loss')
-            axs[0].legend()
-            axs[1].plot(list(range(nb_epochs)), train_accu_list, label='Train accuracy')
-            axs[1].plot(list(range(nb_epochs)), test_accu_list, label='Test accuracy')
-            axs[1].legend()
-            plt.xlabel('Epoch')
-            plt.suptitle('Learning Curve ' + model.__class__.__name__, fontsize=15)
-            plt.tight_layout()
-            plot_path = os.path.join(os.path.dirname(__file__)) + '/plots/learning_curve_' + model.__class__.__name__ + '.png'
-            plt.savefig(plot_path)
-            plt.show()
+        _, axs = plt.subplots(2, 1, figsize=(12,8))
+        # axs[0].plot(list(range(nb_epochs)), train_loss_list, label='Train loss')
+        # axs[0].plot(list(range(nb_epochs)), test_loss_list, label='Test loss')
+        # axs[0].legend()
+        axs[1].plot(list(range(nb_epochs)), train_accu_list, label='Train accuracy')
+        axs[1].plot(list(range(nb_epochs)), test_accu_list, label='Test accuracy')
+        axs[1].legend()
+        plt.xlabel('Epoch')
+        plt.suptitle('Learning Curve ' + model.__class__.__name__, fontsize=15)
+        plt.tight_layout()
+        plot_path = os.path.join(os.path.dirname(__file__)) + '/plots/learning_curve_' + model.__class__.__name__ + '.png'
+        plt.savefig(plot_path)
+        plt.show()
 
 
 def test(model, X_test):

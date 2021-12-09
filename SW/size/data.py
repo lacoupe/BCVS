@@ -22,7 +22,8 @@ def get_price_data():
     indices_price_excel.columns = ['SPI', 'SMALL', 'MID', 'LARGE']
 
     bench_price = indices_price_excel['SPI']
-    price = indices_price_excel[indices_price_excel.columns[1:]].shift(1)
+    # price = indices_price_excel[indices_price_excel.columns[1:]].shift(1)
+    price = indices_price_excel[['SMALL', 'LARGE']].shift(1)
 
     weeky_returns = price.rolling(5).apply(lambda x: np.log(x[-1] / x[0]) / len(x))
 

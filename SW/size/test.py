@@ -29,7 +29,8 @@ def get_training_processed_data(df_input_all, price, rebalance_freq, input_perio
     # returns = price[:last_date_train].pct_change().shift(1).resample(rebalance_freq).agg(lambda x: (x + 1).prod() - 1)
     returns = price[:last_date_train].shift(1).resample(rebalance_freq).apply(lambda x: np.log(x[-1] / x[0]) / len(x))
     if classification:
-        best_pred = returns.rank(axis=1).replace({1: 0., 2: 0., 3: 1.}).shift(-1)
+        # best_pred = returns.rank(axis=1).replace({1: 0., 2: 0., 3: 1.}).shift(-1)
+        best_pred = returns.rank(axis=1).replace({1: 0., 2: 1.}).shift(-1)
     else:
         best_pred = returns.shift(-1)
 

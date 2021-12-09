@@ -39,7 +39,6 @@ def test_model():
     y_train_reg = y_train_reg.to(device)
     X_test = X_test.to(device)
     y_test = y_test.to(device)
-
     eta_mlp = 1e-3
     eta_convnet = 1e-3
     eta_lstm = 1e-3
@@ -47,12 +46,11 @@ def test_model():
     eta_conv_siam = 1e-4
 
     weight_decay = 1e-5
-    dropout = 0.1
-    nb_epochs = 300
+    dropout = 0.
+    nb_epochs = 2
     batch_size = 10
-    verbose = 4
-    i = 0
-    gamma = 0.5
+    verbose = 2
+    gamma = 0.4
     
     model_name = 'SiameseLSTM'
     # model_name = 'ConvNet'
@@ -77,10 +75,10 @@ def test_model():
 
     model.to(device)
     if siamese:
-        train_siamese(model, X_train, y_train, y_train_reg=y_train_reg, nb_epochs=nb_epochs, device=device, X_test=X_test, y_test=y_test, i=i, batch_size=batch_size, eta=eta, 
+        train_siamese(model, X_train, y_train, y_train_reg=y_train_reg, nb_epochs=nb_epochs, device=device, X_test=X_test, y_test=y_test, batch_size=batch_size, eta=eta, 
             weight_decay=weight_decay, verbose=verbose, gamma=gamma)
     else:
-        train(model, X_train, y_train, nb_epochs=nb_epochs, device=device, X_test=X_test, y_test=y_test, i=i, batch_size=batch_size, eta=eta, 
+        train(model, X_train, y_train, nb_epochs=nb_epochs, device=device, X_test=X_test, y_test=y_test, batch_size=batch_size, eta=eta, 
             weight_decay=weight_decay, verbose=verbose, classification=True)
 
     print(f'Accuracy on train set : {output_to_accu(model, X_train, y_train):.2f} %')
