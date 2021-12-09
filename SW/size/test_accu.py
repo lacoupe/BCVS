@@ -62,7 +62,7 @@ def test_model():
     nb_epochs = 200
     batch_size = 10
     verbose = 2
-    gamma = 0.8
+    gamma = 0.3
     
     model_name = 'SiameseLSTM'
     # model_name = 'ConvNet'
