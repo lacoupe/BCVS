@@ -7,6 +7,8 @@ from torch.utils.data import TensorDataset, DataLoader
 from tqdm import tqdm
 import os
 
+np.set_printoptions(precision=3, suppress=True)
+
 
 def output_to_accu(model, X, y):
     model.eval()
@@ -61,7 +63,7 @@ def train(model, X_train, y_train, nb_epochs, device, X_test=None, y_test=None, 
         model.train()
         for train_input, train_target in train_loader:
             optimizer.zero_grad()
-            output = model(train_input)
+            output, _ = model(train_input)
             loss = criterion(output, train_target)
             if classification:
                 loss = (loss * weights).mean()
@@ -121,30 +123,28 @@ def train_siamese(model, X_train, y_train, y_train_reg, nb_epochs, device,
         test_loss_list = []
     
     train_set = TensorDataset(X_train, y_train, y_train_reg)    
-    train_loader = DataLoader(train_set, batch_size=batch_size, shuffle=True, drop_last=True, num_workers=0)
+    train_loader = DataLoader(train_set, batch_size=batch_size, shuffle=False, drop_last=True, num_workers=0)
 
     class_count = np.unique(y_train.cpu(), axis=0, return_counts=True)[1]
     weights = torch.tensor(class_count / sum(class_count)).to(device)
 
     for e in (tqdm(range(nb_epochs)) if (verbose == 3) else range(nb_epochs)):
         acc_loss = 0
+        acc_aux_loss = 0
         model.train()
-        for train_input, train_target, returns in train_loader:
+        for i, (train_input, train_target, returns) in enumerate(train_loader):
             optimizer.zero_grad()
             output, auxiliary = model(train_input)
-            # print(output.size())
-            # print(auxiliary.size())
-            # print(train_target.size())
             loss = criterion(output, train_target)
             loss = (loss * weights).mean()
-
+                
             auxiliary_1, auxiliary_2, auxiliary_3 = auxiliary.unbind(1)
             target_ret_1, target_ret_2, target_ret_3 = returns.unbind(1)
-            # print(auxiliary_1.size())
-            # print(target_ret_1.size())
+
             aux_loss = aux_criterion(auxiliary_1, target_ret_1) * weights[0] + \
                        aux_criterion(auxiliary_2, target_ret_2) * weights[1] + \
                        aux_criterion(auxiliary_3, target_ret_3) * weights[2]
+
             combined_loss = loss + gamma * aux_loss
 
             combined_loss.backward()
@@ -152,11 +152,19 @@ def train_siamese(model, X_train, y_train, y_train_reg, nb_epochs, device,
             optimizer.step()
             
             if verbose in (2, 4):
-                acc_loss = acc_loss + combined_loss.item()
+                acc_aux_loss +=  aux_loss.item()
+                acc_loss += loss.item()
 
         if verbose in (2, 4):
-            if (e % 5) == 0:
-                print('epoch', e + 1, 'loss :', np.round(acc_loss, 4), 'accuracy :', np.round(output_to_accu(model, X_train, y_train), 2), '%')
+            if (e % 1) == 0:
+                print('epoch', e + 1, 
+                      'class loss :', np.round(acc_loss, 4), 
+                      'reg loss :', np.round(acc_aux_loss, 4), 
+                      'accuracy :', np.round(output_to_accu(model, X_train, y_train), 2), '%')
+                print('prediction of returns \n ', auxiliary[:2].detach().numpy())
+                print('true returns \n', returns[:2].detach().numpy())
+                print('output \n', output[:2].detach().numpy())
+                print('true prediction \n', train_target[:2].detach().numpy())
 
         if verbose in (1, 2):
             model.eval()
@@ -192,7 +200,7 @@ def test(model, X_test):
     prob = []
     model.eval()
     for k in range(0, X_test.size(0)):
-        output = model(X_test.narrow(0, k, 1))
+        output, _ = model(X_test.narrow(0, k, 1))
         prob.append(output.cpu().detach().numpy())
 
     return np.array(prob)

@@ -24,6 +24,8 @@ def get_price_data():
     bench_price = indices_price_excel['SPI']
     price = indices_price_excel[indices_price_excel.columns[1:]].shift(1)
 
+    weeky_returns = price.rolling(5).apply(lambda x: np.log(x[-1] / x[0]) / len(x))
+
     ma200 = np.log(price / price.rolling(window=200).mean())
     ma100 = np.log(price / price.rolling(window=100).mean())
     ma50 = np.log(price / price.rolling(window=50).mean())
@@ -70,10 +72,10 @@ def get_price_data():
                             mom12[col], mom6[col], mom1[col],
                             vol12[col], vol6[col], vol1[col],
                             RSI14[col], RSI9[col], #RSI3[col], 
-                            MACD[col], MACD_diff[col], upper_boll_diff[col], lower_boll_diff[col]
+                            MACD[col], MACD_diff[col], upper_boll_diff[col], lower_boll_diff[col], weeky_returns[col]
                             ], axis=1).iloc[252:]
         df_temp.columns = ['ma50', 'ma100', 'ma200', 'mom12', 'mom6', 'mom1',
-                           'vol12', 'vol6', 'vol1', 'RSI14', 'RSI9', 'MACD', 'MACD_diff', 'upper_boll_diff', 'lower_boll_diff'
+                           'vol12', 'vol6', 'vol1', 'RSI14', 'RSI9', 'MACD', 'MACD_diff', 'upper_boll_diff', 'lower_boll_diff', 'weekly_returns'
                            ]
         # df_temp = price[col]
         # df_temp.columns = ['price']

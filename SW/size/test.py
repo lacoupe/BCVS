@@ -26,7 +26,8 @@ def get_training_processed_data(df_input_all, price, rebalance_freq, input_perio
     num_features = len(df_input_all.columns.get_level_values(1).unique())
 
     # Target data
-    returns = price[:last_date_train].pct_change().shift(1).resample(rebalance_freq).agg(lambda x: (x + 1).prod() - 1)
+    # returns = price[:last_date_train].pct_change().shift(1).resample(rebalance_freq).agg(lambda x: (x + 1).prod() - 1)
+    returns = price[:last_date_train].shift(1).resample(rebalance_freq).apply(lambda x: np.log(x[-1] / x[0]) / len(x))
     if classification:
         best_pred = returns.rank(axis=1).replace({1: 0., 2: 0., 3: 1.}).shift(-1)
     else:
@@ -80,7 +81,7 @@ def strat(df_input_all, price, rebalance_freq, model_name='MLP', nb_epochs=50,
     num_tickers = len(df_input_all.columns.get_level_values(0).unique())
     num_features = len(df_input_all.columns.get_level_values(1).unique())
 
-    X, y = get_training_processed_data(df_input_all, price, rebalance_freq, input_period, training_window, classification)
+    X, y, _ = get_training_processed_data(df_input_all, price, rebalance_freq, input_period, training_window, classification)
 
     mean = X.mean(dim=[0, 1, 2], keepdim=True)
     std = X.std(dim=[0, 1, 2], keepdim=True)
@@ -129,23 +130,23 @@ def strat(df_input_all, price, rebalance_freq, model_name='MLP', nb_epochs=50,
     X = X.sub_(mean).div_(std)
 
     model.eval()
-    out = model(X)
+    out, _= model(X)
 
     return pd.DataFrame(index=[model_name], columns=price.columns, data=out.cpu().detach().numpy())
 
 def run():
     price, _, df_X = get_price_data()
 
-    # models_list = ['MLP', 'ConvNet', 'LSTM']
+    models_list = ['MLP', 'ConvNet', 'LSTM']
     # models_list = ['MLP', 'ConvNet']
-    models_list = ['LSTM']
+    # models_list = ['MLP']
 
     output = pd.DataFrame(index=['Ensemble'], columns=price.columns)
 
     batch_size = 10
     training_window = 10
-    nb_epochs = 200
-    verbose = 4
+    nb_epochs = 100
+    verbose = 3
     rebalance_freq = 'W-FRI'
     input_period_days = 42
     input_period_weeks = 8

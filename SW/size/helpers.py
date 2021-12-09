@@ -88,8 +88,6 @@ def next_friday(date):
     return last_friday
 
 
-
-
 def performance_plot(df_pred_dict, daily_returns, bench_price, log=True):
     tax = 0.0012
     perf_bench = price_to_perf(bench_price.loc[df_pred_dict['Ensemble'].index[0]:df_pred_dict['Ensemble'].index[-1]], log=log)

@@ -156,9 +156,9 @@ def run_backtest():
     
     price, bench_price, df_X = get_price_data()
 
-    # models_list = ['MLP', 'ConvNet', 'LSTM']
+    models_list = ['MLP', 'ConvNet', 'LSTM']
     # models_list = ['MLP', 'ConvNet']
-    models_list = ['MLP']
+    # models_list = ['MLP']
     df_pred_dict = {}
     df_prob_dict = {}
 
