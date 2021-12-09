@@ -15,7 +15,7 @@ def plot_cm(model, X_test, y_test, price):
     df_prob = pd.DataFrame(data=output.reshape(len(output), 3))
     df_pred = prob_to_pred_2(df_prob)
 
-    ConfusionMatrixDisplay.from_predictions(y_test.detach().numpy().argmax(axis=1), 
+    ConfusionMatrixDisplay.from_predictions(y_test.cpu().detach().numpy().argmax(axis=1), 
                                             df_pred.values.argmax(axis=1), 
                                             display_labels=list(price.columns),
                                             cmap='Blues', colorbar=False

@@ -150,14 +150,20 @@ class SiameseConvNet(nn.Module):
 
 class SiameseLSTM(nn.Module):
 
-    def __init__(self, input_size, output_size, device, hidden_size=10, num_layers=2, pdrop=0.1):
+    def __init__(self, input_size, output_size, device, hidden_size=10, num_layers=1, pdrop=0.1):
         super().__init__()
         
         self.device = device
+
+        # Input data size
         self.input_size = input_size
         self.output_size = output_size
+
+        # LSTM parameters
         self.hidden_size = hidden_size
         self.num_layers = num_layers
+
+        # Regularizers
         self.dropout = pdrop
 
         # Regression
@@ -167,15 +173,16 @@ class SiameseLSTM(nn.Module):
 
         # Classification
         self.lstm2 = nn.LSTM(input_size=self.input_size, hidden_size=self.hidden_size, 
-                            num_layers=self.num_layers, batch_first=True, dropout=self.dropout)
+                             num_layers=self.num_layers, batch_first=True, dropout=self.dropout)
         self.fc = nn.Linear(hidden_size, output_size)
 
         # Final branch
         self.fc_last = nn.Linear(6, 6)
         self.classifier = nn.Linear(6, 3)
-        self.sigmoid = nn.Sigmoid()
-        self.softmax = nn.Softmax(dim=1)
+
+        # Activation function
         self.relu = nn.ReLU()
+        self.softmax = nn.Softmax(dim=1)
         
     def forward_once(self, x):
         h0 = torch.randn(self.num_layers, x.size(0), self.hidden_size).to(self.device)
