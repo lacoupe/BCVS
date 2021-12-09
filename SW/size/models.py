@@ -184,9 +184,9 @@ class SiameseLSTM(nn.Module):
     def forward(self, x):
 
         # Forward Regression with weight sharing
-        input1 = x[:, :, 0, -1].view(x.size(0), x.size(1), 1)
-        input2 = x[:, :, 1, -1].view(x.size(0), x.size(1), 1)
-        input3 = x[:, :, 2, -1].view(x.size(0), x.size(1), 1)
+        input1 = x[:, :, 0, -1].view(x.size(0), x.size(1), 1).to(self.device)
+        input2 = x[:, :, 1, -1].view(x.size(0), x.size(1), 1).to(self.device)
+        input3 = x[:, :, 2, -1].view(x.size(0), x.size(1), 1).to(self.device)
         
         x1 = self.forward_once(input1)
         x2 = self.forward_once(input2)

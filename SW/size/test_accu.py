@@ -52,7 +52,7 @@ def test_model():
     batch_size = 10
     verbose = 4
     i = 0
-    gamma = 0.1
+    gamma = 0.2
     
     model_name = 'SiameseLSTM'
     # model_name = 'ConvNet'
@@ -75,6 +75,7 @@ def test_model():
         eta = eta_conv_siam
         model = SiameseConvNet(dim1, dim3, pdrop=dropout)
 
+    model.to(device)
     if siamese:
         train_siamese(model, X_train, y_train, y_train_reg=y_train_reg, nb_epochs=nb_epochs, device=device, X_test=X_test, y_test=y_test, i=i, batch_size=batch_size, eta=eta, 
             weight_decay=weight_decay, verbose=verbose, gamma=gamma)
