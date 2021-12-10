@@ -21,10 +21,9 @@ def get_price_data():
     data_path = os.path.join(os.path.dirname(__file__)) + '/data/prices.csv'
     indices_price_excel = pd.read_csv(data_path, index_col=0, parse_dates=True).dropna()
     indices_price_excel.head()
-
+    indices_price_excel.rename(columns={'SPI19 Index': 'SMALL', 'SMCI Index': 'MID', 'SPI21 Index': 'LARGE'}, inplace=True)
     bench_price = indices_price_excel['SPI Index'].shift(1)
-    target_prices = indices_price_excel[['SPI19 Index', 'SMCI Index', 'SPI21 Index']].shift(1)
-    target_prices.columns = ['SMALL', 'MID', 'LARGE']
+    target_prices = indices_price_excel[['SMALL', 'MID', 'LARGE']].shift(1)
     features = indices_price_excel[indices_price_excel.columns[1:-1]].shift(1)
 
     weeky_returns = features.rolling(5).apply(lambda x: np.log(x[-1] / x[0]) / len(x))
@@ -34,13 +33,8 @@ def get_price_data():
     vol1 = features.rolling(window=21 * 1).std()
 
     mom1 = np.log(features.rolling(21 * 1).apply(lambda x: x[-1] / x[0]))  / (21 * 1)
-
-    # upper_bollinger = features.rolling(20).mean() + 2 * features.rolling(20).std()
-    # lower_bollinger = features.rolling(20).mean() - 2 * features.rolling(20).std()
-    # upper_boll_diff = np.log(features / upper_bollinger)
-    # lower_boll_diff = np.log(features / lower_bollinger)
     
-    RSI9 = RSI(features, 9)
+    RSI5 = RSI(features, 5)
 
     ema_12 = features.ewm(span=12).mean()
     ema_26 = features.ewm(span=26).mean()
@@ -51,7 +45,7 @@ def get_price_data():
     df_input = pd.DataFrame()
     for col in features.columns:
         df_temp = pd.concat([
-                            ma50[col], mom1[col], vol1[col], RSI9[col], MACD[col], MACD_diff[col], weeky_returns[col]
+                            ma50[col], mom1[col], vol1[col], RSI5[col], MACD[col], MACD_diff[col], weeky_returns[col]
                             ], axis=1)
         df_temp.columns = ['ma50', 'mo1', 'vol1', 'RSI9', 'MACD', 'MACD_diff', 'weekly_returns']
         df_dict[col] = df_temp
@@ -61,7 +55,7 @@ def get_price_data():
     return bench_price, df_input, target_prices
 
 
-def get_training_processed_data(df_input_all, target_prices, rebalance_freq, input_period, training_window, classification=True):
+def get_training_processed_data(df_input_all, target_prices, rebalance_freq, input_period, input_period_weeks, training_window, classification=True):
 
     last_date = target_prices.index[-1]
 
@@ -90,9 +84,6 @@ def get_training_processed_data(df_input_all, target_prices, rebalance_freq, inp
     df_output = best_pred.loc[start_date:].dropna()
     df_output_reg = returns.shift(-1).loc[start_date:].dropna()
 
-    input_returns = target_prices.rolling(5).apply(lambda x: np.log(x[-1] / x[0]) / len(x)).loc[start_date:].dropna()
-
-
     if rebalance_freq =='M':
         start_date_input = (start_date - relativedelta(weeks=input_period)).replace(day=1) 
     else:
@@ -101,7 +92,7 @@ def get_training_processed_data(df_input_all, target_prices, rebalance_freq, inp
         start_date_input = target_prices.loc[:start_date].iloc[-input_period:].index[0]
     
     df_input = df_input_all.loc[start_date_input:df_output.index[-1]]
-    df_input_reg = target_prices.rolling(5).apply(lambda x: np.log(x[-1] / x[0]) / len(x)).loc[start_date_input:df_output.index[-1]]
+    df_input_reg = target_prices.resample('W-FRI').apply(lambda x: np.log(x[-1] / x[0]) / len(x)).loc[start_date_input:df_output.index[-1]]
 
     X = []
     X_reg = []
@@ -114,7 +105,7 @@ def get_training_processed_data(df_input_all, target_prices, rebalance_freq, inp
         # If we rebalance weekly, the input data will be daily data
         else:
             df_input_period = df_input.loc[:idx].iloc[-input_period:]
-            df_input_period_reg = df_input_reg.loc[:idx].iloc[-input_period:]
+            df_input_period_reg = df_input_reg.loc[:idx].iloc[-input_period_weeks:]
             
         X_period = df_input_period.values.reshape(input_period, num_tickers, num_features)
         X_period_reg = df_input_period_reg.values
