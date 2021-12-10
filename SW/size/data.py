@@ -52,7 +52,7 @@ def get_price_data():
 
     df_input = pd.concat(df_dict, axis=1).dropna(axis=0, how='any')
 
-    return bench_price, df_input, target_prices
+    return features, bench_price, df_input, target_prices
 
 
 def get_training_processed_data(df_input_all, target_prices, rebalance_freq, input_period, input_period_weeks, training_window, classification=True):

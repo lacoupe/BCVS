@@ -11,7 +11,7 @@ import numpy as np
 def test_model():
 
     # Get data
-    _, df_input_all, target_prices  = get_price_data()
+    _, _, df_input_all, target_prices  = get_price_data()
 
     # Data parameters
     rebalance_freq = 'W-FRI'
@@ -56,7 +56,7 @@ def test_model():
     eta_mlp = 1e-3
     eta_convnet = 1e-3
     eta_lstm = 1e-3
-    eta_lstm_siam = 5e-4
+    eta_lstm_siam = 1e-3
     eta_conv_siam = 1e-4
 
     weight_decay = 1e-5
@@ -64,7 +64,7 @@ def test_model():
     nb_epochs = 200
     batch_size = 10
     verbose = 2
-    gamma = 0.3
+    gamma = 0.4
     
     model_name = 'SiameseLSTM'
     # model_name = 'ConvNet'
