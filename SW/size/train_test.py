@@ -197,12 +197,12 @@ def train_siamese(model, X_train, X_train_reg, y_train, y_train_reg, nb_epochs, 
         plt.show()
 
 
-def test(model, X_test):
+def test(model, X_test, X_test_reg):
     
     prob = []
     model.eval()
     for k in range(0, X_test.size(0)):
-        output, _ = model(X_test.narrow(0, k, 1))
+        output, _ = model(X_test.narrow(0, k, 1), X_test_reg.narrow(0, k, 1))
         prob.append(output.cpu().detach().numpy())
 
     return np.array(prob)

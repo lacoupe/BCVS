@@ -22,7 +22,8 @@ def test_model():
     # Process data
     X, X_reg, y, y_reg = get_training_processed_data(df_input_all, target_prices, rebalance_freq, input_period, input_period_weeks, training_window)
     train_indices, test_indices, _, _ = train_test_split(range(len(y)), y, stratify=y, test_size=0.4, random_state=1)
-    X_train, X_train_reg, y_train, y_train_reg, X_test, y_test = X[train_indices], X_reg[train_indices], y[train_indices], y_reg[train_indices], X[test_indices], y[test_indices]
+    X_train, X_train_reg, y_train, y_train_reg, X_test, X_test_reg, y_test = X[train_indices], X_reg[train_indices], y[train_indices], y_reg[train_indices], X[test_indices], X_reg[test_indices], y[test_indices]
+
     X_mean = X_train.mean(dim=[0, 1, 2], keepdim=True)
     X_std = X_train.std(dim=[0, 1, 2], keepdim=True)
     X_train = X_train.sub_(X_mean).div_(X_std)
@@ -60,7 +61,7 @@ def test_model():
 
     weight_decay = 1e-5
     dropout = 0.
-    nb_epochs = 200
+    nb_epochs = 2
     batch_size = 10
     verbose = 2
     gamma = 0.3
@@ -94,9 +95,9 @@ def test_model():
         train(model, X_train, y_train, nb_epochs=nb_epochs, device=device, X_test=X_test, y_test=y_test, batch_size=batch_size, eta=eta, 
             weight_decay=weight_decay, verbose=verbose, classification=True)
 
-    print(f'Accuracy on train set : {output_to_accu(model, X_train, y_train):.2f} %')
-    print(f'Accuracy on test set : {output_to_accu(model, X_test, y_test):.2f} %')
-    plot_cm(model, X_test, y_test, target_prices)
+    print(f'Accuracy on train set : {output_to_accu(model, X_train, X_train_reg, y_train):.2f} %')
+    print(f'Accuracy on test set : {output_to_accu(model, X_test, X_test_reg, y_test):.2f} %')
+    plot_cm(model, X_test, X_test_reg, y_test, target_prices)
 
 
 if __name__ == "__main__":
