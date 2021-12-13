@@ -61,10 +61,10 @@ def test_model():
 
     weight_decay = 1e-5
     dropout = 0.
-    nb_epochs = 300
+    nb_epochs = 20
     batch_size = 10
     verbose = 2
-    gamma = 0.4
+    gamma = 0.5
     
     model_name = 'SiameseLSTM'
     # model_name = 'ConvNet'

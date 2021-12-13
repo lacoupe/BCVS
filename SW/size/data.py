@@ -21,7 +21,10 @@ def get_price_data():
     data_path = os.path.join(os.path.dirname(__file__)) + '/data/prices.csv'
     indices_price_excel = pd.read_csv(data_path, index_col=0, parse_dates=True).dropna()
     indices_price_excel.head()
-    indices_price_excel.rename(columns={'SPI19 Index': 'SMALL', 'SMCI Index': 'MID', 'SPI21 Index': 'LARGE'}, inplace=True)
+    indices_price_excel.rename(columns={'SPI19 Index': 'SMALL', 'SMCI Index': 'MID', 'SPI21 Index': 'LARGE',
+                                        'MXEU0MT Index': 'Materials EU', 'MXEU0CS Index': 'Consumer Staple EU', 
+                                        'MXEU0IN Index': 'Industrials EU', 'MXEU0CD Index': 'Consumer Dis. EU',
+                                        'MXEU0HC Index': 'Health Care EU', 'MXEU0FN Index': 'Financials EU'}, inplace=True)
     bench_price = indices_price_excel['SPI Index'].shift(1)
     target_prices = indices_price_excel[['SMALL', 'MID', 'LARGE']].shift(1)
     features = indices_price_excel[indices_price_excel.columns[1:-1]].shift(1)
