@@ -12,7 +12,7 @@ from sklearn.metrics import ConfusionMatrixDisplay
 def plot_cm(model, X_test, X_test_reg, y_test, price):
     model.eval()
     output = test(model, X_test, X_test_reg)
-    df_prob = pd.DataFrame(data=output.reshape(len(output), 3))
+    df_prob = pd.DataFrame(data=output.reshape(len(output), 2))
     df_pred = prob_to_pred_2(df_prob)
 
     ConfusionMatrixDisplay.from_predictions(y_test.cpu().detach().numpy().argmax(axis=1), 
