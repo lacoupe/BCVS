@@ -15,7 +15,7 @@ def test_model():
 
     # Data parameters
     rebalance_freq = 'W-FRI'
-    input_period = 42
+    input_period = 21
     input_period_weeks = 8
     training_window = 10
 
@@ -61,7 +61,7 @@ def test_model():
 
     weight_decay = 1e-5
     dropout = 0.
-    nb_epochs = 500
+    nb_epochs = 100
     batch_size = 10
     verbose = 2
     gamma = 0.8
