@@ -56,15 +56,15 @@ def test_model():
     eta_mlp = 1e-3
     eta_convnet = 1e-3
     eta_lstm = 1e-3
-    eta_lstm_siam = 1e-3
+    eta_lstm_siam = 5e-3
     eta_conv_siam = 1e-4
 
     weight_decay = 1e-5
-    dropout = 0.
+    dropout = 0.1
     nb_epochs = 100
     batch_size = 10
     verbose = 2
-    gamma = 0.8
+    gamma = 0.7
     
     model_name = 'SiameseLSTM'
     # model_name = 'ConvNet'
