@@ -139,14 +139,14 @@ def train_siamese(model, X_train, X_train_reg, y_train, y_train_reg, nb_epochs, 
             loss = criterion(output, train_target)
             loss = (loss * weights).mean()
 
-            auxiliary_1, auxiliary_2, auxiliary_3 = auxiliary.unbind(1)
-            # auxiliary_1, auxiliary_2 = auxiliary.unbind(1)
+            # auxiliary_1, auxiliary_2, auxiliary_3 = auxiliary.unbind(1)
+            auxiliary_1, auxiliary_2 = auxiliary.unbind(1)
 
-            target_ret_1, target_ret_2, target_ret_3 = returns.unbind(1)
-            # target_ret_1, target_ret_2 = returns.unbind(1)
+            # target_ret_1, target_ret_2, target_ret_3 = returns.unbind(1)
+            target_ret_1, target_ret_2 = returns.unbind(1)
             aux_loss = aux_criterion(auxiliary_1, target_ret_1) * weights[0] + \
-                       aux_criterion(auxiliary_2, target_ret_2) * weights[1] + \
-                       aux_criterion(auxiliary_3, target_ret_3) * weights[2]
+                       aux_criterion(auxiliary_2, target_ret_2) * weights[1]
+                    #    aux_criterion(auxiliary_3, target_ret_3) * weights[2]
 
             combined_loss = loss + gamma * aux_loss
 

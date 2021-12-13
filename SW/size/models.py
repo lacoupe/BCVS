@@ -171,12 +171,12 @@ class SiameseLSTM(nn.Module):
                             num_layers=self.num_layers, batch_first=True, dropout=self.dropout)
         self.lstm2 = nn.LSTM(input_size=1, hidden_size=self.hidden_size, 
                             num_layers=self.num_layers, batch_first=True, dropout=self.dropout)
-        self.lstm3 = nn.LSTM(input_size=1, hidden_size=self.hidden_size, 
-                            num_layers=self.num_layers, batch_first=True, dropout=self.dropout)
+        # self.lstm3 = nn.LSTM(input_size=1, hidden_size=self.hidden_size, 
+        #                     num_layers=self.num_layers, batch_first=True, dropout=self.dropout)
 
         self.fc1 = nn.Linear(hidden_size, 1)
         self.fc2 = nn.Linear(hidden_size, 1)
-        self.fc3 = nn.Linear(hidden_size, 1)
+        # self.fc3 = nn.Linear(hidden_size, 1)
 
         # Classification
         self.lstm_class = nn.LSTM(input_size=self.input_size, hidden_size=self.hidden_size, 
@@ -205,25 +205,26 @@ class SiameseLSTM(nn.Module):
         x = self.fc2(x[:, -1, :])
         return x
 
-    def forward_reg3(self, x):
-        h0 = torch.randn(self.num_layers, x.size(0), self.hidden_size).to(self.device)
-        c0 = torch.randn(self.num_layers, x.size(0), self.hidden_size).to(self.device)
-        x, _ = self.lstm3(x, (h0.detach(), c0.detach()))
-        x = self.fc3(x[:, -1, :])
-        return x
+    # def forward_reg3(self, x):
+    #     h0 = torch.randn(self.num_layers, x.size(0), self.hidden_size).to(self.device)
+    #     c0 = torch.randn(self.num_layers, x.size(0), self.hidden_size).to(self.device)
+    #     x, _ = self.lstm3(x, (h0.detach(), c0.detach()))
+    #     x = self.fc3(x[:, -1, :])
+    #     return x
 
     def forward(self, x, x_reg):
 
         # Forward Regression with weight sharing
         input1 = x_reg[:, :, 0].view(x_reg.size(0), x_reg.size(1), 1).to(self.device)
         input2 = x_reg[:, :, 1].view(x_reg.size(0), x_reg.size(1), 1).to(self.device)
-        input3 = x_reg[:, :, 2].view(x_reg.size(0), x_reg.size(1), 1).to(self.device)
+        # input3 = x_reg[:, :, 2].view(x_reg.size(0), x_reg.size(1), 1).to(self.device)
         
         x1 = self.forward_reg1(input1)
         x2 = self.forward_reg2(input2)
-        x3 = self.forward_reg3(input3)
+        # x3 = self.forward_reg3(input3)
 
-        auxiliary = torch.cat((x1, x2, x3), 1)
+        # auxiliary = torch.cat((x1, x2, x3), 1)
+        auxiliary = torch.cat((x1, x2), 1)
 
         # Forward Classification
         h0 = torch.randn(self.num_layers, x.size(0), self.hidden_size).to(self.device)

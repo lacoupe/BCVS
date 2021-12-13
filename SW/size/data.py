@@ -26,7 +26,9 @@ def get_price_data():
                                         'MXEU0IN Index': 'Industrials EU', 'MXEU0CD Index': 'Consumer Dis. EU',
                                         'MXEU0HC Index': 'Health Care EU', 'MXEU0FN Index': 'Financials EU'}, inplace=True)
     bench_price = indices_price_excel['SPI Index'].shift(1)
-    target_prices = indices_price_excel[['SMALL', 'MID', 'LARGE']].shift(1)
+
+    # target_prices = indices_price_excel[['SMALL', 'MID', 'LARGE']].shift(1)
+    target_prices = indices_price_excel[['SMALL', 'LARGE']].shift(1)
     features = indices_price_excel[indices_price_excel.columns[1:-1]].shift(1)
 
     weeky_returns = features.rolling(5).apply(lambda x: np.log(x[-1] / x[0]) / len(x))
@@ -62,37 +64,34 @@ def get_training_processed_data(df_input_all, target_prices, rebalance_freq, inp
 
     last_date = target_prices.index[-1]
 
-    if rebalance_freq == 'M':
-        last_date_train = last_month(last_date - relativedelta(weeks=input_period))
-    else:
-        last_date_train = last_friday(target_prices.index[-input_period])
+    # if rebalance_freq == 'M':
+    #     last_date_train = last_month(last_date - relativedelta(weeks=input_period))
+    # else:
+    last_date_train = last_friday(target_prices.index[-input_period])
     
     num_tickers = len(df_input_all.columns.get_level_values(0).unique())
     num_features = len(df_input_all.columns.get_level_values(1).unique())
 
     # Target data
-    # returns = price[:last_date_train].pct_change().shift(1).resample(rebalance_freq).agg(lambda x: (x + 1).prod() - 1)
     returns = target_prices[:last_date_train].resample(rebalance_freq).apply(lambda x: np.log(x[-1] / x[0]) / len(x))
-    if classification:
-        best_pred = returns.rank(axis=1).replace({1: 0., 2: 0., 3: 1.}).shift(-1)
-        # best_pred = returns.rank(axis=1).replace({1: 0., 2: 1.}).shift(-1)
-    else:
-        best_pred = returns.shift(-1)
 
-    if rebalance_freq == 'M':
-        start_date = last_month(last_date_train - relativedelta(years=training_window))
-    else:
-        start_date = last_friday(last_date_train - relativedelta(years=training_window))
+    # best_pred = returns.rank(axis=1).replace({1: 0., 2: 0., 3: 1.}).shift(-1)
+    best_pred = returns.rank(axis=1).replace({1: 0., 2: 1.}).shift(-1)
+
+    # if rebalance_freq == 'M':
+    #     start_date = last_month(last_date_train - relativedelta(years=training_window))
+    # else:
+    start_date = last_friday(last_date_train - relativedelta(years=training_window))
 
     df_output = best_pred.loc[start_date:].dropna()
     df_output_reg = returns.shift(-1).loc[start_date:].dropna()
 
-    if rebalance_freq =='M':
-        start_date_input = (start_date - relativedelta(weeks=input_period)).replace(day=1) 
-    else:
+    # if rebalance_freq =='M':
+    #     start_date_input = (start_date - relativedelta(weeks=input_period)).replace(day=1) 
+    # else:
         # start_date_input = start_date - relativedelta(days=input_period)
         # start_date_input = start_date_input - relativedelta(days=(start_date_input.weekday()))
-        start_date_input = target_prices.loc[:start_date].iloc[-input_period:].index[0]
+    start_date_input = target_prices.loc[:start_date].iloc[-21 * 3:].index[0]
     
     df_input = df_input_all.loc[start_date_input:df_output.index[-1]]
     df_input_reg = target_prices.resample('W-FRI').apply(lambda x: np.log(x[-1] / x[0]) / len(x)).loc[start_date_input:df_output.index[-1]]
@@ -101,15 +100,14 @@ def get_training_processed_data(df_input_all, target_prices, rebalance_freq, inp
     X_reg = []
     for idx in df_output.index:
         # If we rebalance monthly, the input data will be weekly data
-        if rebalance_freq == 'M':
-            dayofweek = {0:'Monday', 1:'Tuesday', 2:'Wednesday', 3:'Thursday', 4:'Friday', 5:'Saturday', 6:'Sunday'}
-            reb_freq_input = 'W-' + dayofweek[df_input_all.index[-1].weekday()][:3].upper()
-            df_input_period = df_input.loc[:idx].resample(reb_freq_input).mean().iloc[-input_period:]
-        # If we rebalance weekly, the input data will be daily data
-        else:
-            df_input_period = df_input.loc[:idx].iloc[-input_period:]
-            df_input_period_reg = df_input_reg.loc[:idx].iloc[-input_period_weeks:]
-            
+        # if rebalance_freq == 'M':
+        #     dayofweek = {0:'Monday', 1:'Tuesday', 2:'Wednesday', 3:'Thursday', 4:'Friday', 5:'Saturday', 6:'Sunday'}
+        #     reb_freq_input = 'W-' + dayofweek[df_input_all.index[-1].weekday()][:3].upper()
+        #     df_input_period = df_input.loc[:idx].resample(reb_freq_input).mean().iloc[-input_period:]
+        # # If we rebalance weekly, the input data will be daily data
+        # else:
+        df_input_period = df_input.loc[:idx].iloc[-input_period:]
+        df_input_period_reg = df_input_reg.loc[:idx].iloc[-input_period_weeks:]
         X_period = df_input_period.values.reshape(input_period, num_tickers, num_features)
         X_period_reg = df_input_period_reg.values
         X.append(X_period)
