@@ -64,7 +64,7 @@ class ConvNet(nn.Module):
     
 class LSTM(nn.Module):
 
-    def __init__(self, input_size, output_size, device, hidden_size=50, num_layers=2, pdrop=0.2):
+    def __init__(self, input_size, output_size, device, hidden_size=50, num_layers=5, pdrop=0.1):
         super(LSTM, self).__init__()
         
         self.input_size = input_size
@@ -76,7 +76,7 @@ class LSTM(nn.Module):
         self.lstm = nn.LSTM(input_size=self.input_size, hidden_size=self.hidden_size, 
                             num_layers=self.num_layers, batch_first=True, dropout=self.dropout)
         self.fc = nn.Linear(hidden_size, output_size)
-        self.sigmoid = nn.Sigmoid()
+
         self.softmax = nn.Softmax(dim=1)
         self.relu = nn.ReLU()
         

@@ -52,10 +52,10 @@ def test_model():
 
     eta_mlp = 1e-3
     eta_convnet = 1e-3
-    eta_lstm = 1e-3
+    eta_lstm = 5e-3
     eta_lstm_siam = 5e-3
 
-    weight_decay = 1e-5
+    weight_decay = 1e-4
     dropout = 0.1
     batch_size = 10
     gamma = 0.1
@@ -68,12 +68,15 @@ def test_model():
     siamese = False
 
     dim1, dim2 = X.size(1), X.size(2)
+
     if model_name == 'MLP':
         eta = eta_mlp
         model = MLP(dim1, dim2, pdrop=dropout)
+
     elif model_name == 'ConvNet':
         eta = eta_convnet
         model = ConvNet(dim1, dim2, pdrop=dropout)
+
     elif model_name == 'LSTM':
         eta = eta_lstm
         model = LSTM(input_size=dim2, output_size=y.size(1), device=device, pdrop=dropout)
