@@ -54,7 +54,6 @@ class ConvNet(nn.Module):
     def forward(self, x):
         
         x = x.view(x.size(0), 1, x.size(1), x.size(2), x.size(3))
-        # print(x.size())
         x = self.relu(self.drop3d(self.bn3d1(self.conv1(x))))
         x = self.relu(self.drop3d(self.bn3d2(self.conv2(x))))
     
@@ -67,7 +66,7 @@ class ConvNet(nn.Module):
     
 class LSTM(nn.Module):
 
-    def __init__(self, input_size, output_size, device, hidden_size=8, num_layers=2, pdrop=0.2):
+    def __init__(self, input_size, output_size, device, hidden_size=50, num_layers=2, pdrop=0.2):
         super(LSTM, self).__init__()
         
         self.input_size = input_size
@@ -86,7 +85,7 @@ class LSTM(nn.Module):
     def forward(self, x):
         h0 = torch.randn(self.num_layers, x.size(0), self.hidden_size).to(self.device)
         c0 = torch.randn(self.num_layers, x.size(0), self.hidden_size).to(self.device)
-        x = x.view(x.size(0), x.size(1), x.size(2) * x.size(3))
+        x = x.view(x.size(0), x.size(1), x.size(2))
         x, _ = self.lstm(x, (h0.detach(), c0.detach()))
         x = self.softmax(self.fc(x[:, -1, :]))
 

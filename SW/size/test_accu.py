@@ -2,7 +2,7 @@ from torch.utils.data.dataset import random_split
 from data import get_data, get_processed_data
 from train_test import train, output_to_loss, output_to_accu, test, train_siamese
 from helpers import plot_cm, count_parameters
-from models import MLP, ConvNet, LSTM, SiameseLSTM, SiameseConvNet
+from models import MLP, ConvNet, LSTM, SiameseLSTM
 from sklearn.model_selection import train_test_split
 import torch
 import numpy as np
@@ -80,10 +80,6 @@ def test_model():
     elif model_name == 'SiameseLSTM':
         eta = eta_lstm_siam
         model = SiameseLSTM(input_size=dim2, output_size=X_reg.size(2), device=device, pdrop=dropout)
-
-    elif model_name == 'SiameseConvNet':
-        eta = eta_conv_siam
-        model = SiameseConvNet(dim1, dim2, pdrop=dropout)
 
     model.to(device)
     print(f'Number of parameters : {count_parameters(model)}')
