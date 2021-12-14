@@ -54,14 +54,14 @@ def test_model():
     eta_convnet = 1e-3
     eta_lstm = 1e-3
     eta_lstm_siam = 5e-3
-    eta_conv_siam = 1e-4
 
     weight_decay = 1e-5
-    dropout = 0.2
+    dropout = 0.1
     nb_epochs = 100
     batch_size = 10
-    verbose = 2
     gamma = 0.1
+
+    verbose = 2
     
     model_name = 'SiameseLSTM'
     siamese = True
