@@ -9,6 +9,10 @@ from train_test import test
 from sklearn.metrics import ConfusionMatrixDisplay
 
 
+def count_parameters(model): 
+    return sum(p.numel() for p in model.parameters() if p.requires_grad)
+
+
 def plot_cm(model, X_test, X_test_reg, y_test, price):
     model.eval()
     output = test(model, X_test, X_test_reg)

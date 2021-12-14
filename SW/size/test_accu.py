@@ -1,7 +1,7 @@
 from torch.utils.data.dataset import random_split
 from data import get_data, get_processed_data
 from train_test import train, output_to_loss, output_to_accu, test, train_siamese
-from helpers import plot_cm
+from helpers import plot_cm, count_parameters
 from models import MLP, ConvNet, LSTM, SiameseLSTM, SiameseConvNet
 from sklearn.model_selection import train_test_split
 import torch
@@ -20,7 +20,7 @@ def test_model():
     # Process data
     X, X_reg, y, y_reg = get_processed_data(features, target_prices, input_period, input_period_weeks, training_window)
 
-    train_indices, test_indices, _, _ = train_test_split(range(len(y)), y, stratify=y, test_size=0.3, random_state=1)
+    train_indices, test_indices, _, _ = train_test_split(range(len(y)), y, stratify=y, test_size=0.2, random_state=1)
     X_train, X_train_reg, y_train, y_train_reg, X_test, X_test_reg, y_test = X[train_indices], X_reg[train_indices], y[train_indices], y_reg[train_indices], X[test_indices], X_reg[test_indices], y[test_indices]
 
     X_mean = X_train.mean(dim=[0, 1], keepdim=True)
@@ -35,7 +35,6 @@ def test_model():
     y_reg_mean = y_train_reg.mean(dim=[0, 1], keepdim=True)
     y_reg_std = y_train_reg.std(dim=[0, 1], keepdim=True)
     y_train_reg = y_train_reg.sub_(y_reg_mean).div_(y_reg_std)
-
 
     class_count = np.unique(y_train.cpu(), axis=0, return_counts=True)[1]
     weights = torch.tensor(class_count / sum(class_count))
@@ -57,9 +56,9 @@ def test_model():
     eta_lstm_siam = 5e-3
     eta_conv_siam = 1e-4
 
-    weight_decay = 1e-5
-    dropout = 0.1
-    nb_epochs = 200
+    weight_decay = 1e-4
+    dropout = 0.2
+    nb_epochs = 100
     batch_size = 10
     verbose = 2
     gamma = 0.5
@@ -87,6 +86,8 @@ def test_model():
         model = SiameseConvNet(dim1, dim2, pdrop=dropout)
 
     model.to(device)
+    print(f'Number of parameters : {count_parameters(model)}')
+
     if siamese:
         train_siamese(model, X_train, X_train_reg, y_train, y_train_reg=y_train_reg, nb_epochs=nb_epochs, device=device, X_test=X_test, y_test=y_test, batch_size=batch_size, eta=eta, 
             weight_decay=weight_decay, verbose=verbose, gamma=gamma)
