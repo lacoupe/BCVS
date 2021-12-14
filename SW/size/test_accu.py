@@ -60,8 +60,8 @@ def test_model():
     batch_size = 10
     gamma = 0.1
 
-    nb_epochs = 1
-    
+    nb_epochs = 100
+
     verbose = 2
     
     model_name = 'LSTM'
