@@ -1,7 +1,7 @@
 from torch.utils.data.dataset import random_split
 from data import get_data, get_processed_data
-from train_test import train, output_to_loss, output_to_accu, test, train_siamese
-from helpers import plot_cm, count_parameters
+from train_test import train, output_to_loss, output_to_accu, test, train_siamese, output_to_accu_siamese
+from helpers import plot_cm, count_parameters, plot_cm_siamese
 from models import MLP, ConvNet, LSTM, SiameseLSTM
 from sklearn.model_selection import train_test_split
 import torch
@@ -57,14 +57,15 @@ def test_model():
 
     weight_decay = 1e-5
     dropout = 0.1
-    nb_epochs = 100
     batch_size = 10
     gamma = 0.1
 
+    nb_epochs = 1
+    
     verbose = 2
     
-    model_name = 'SiameseLSTM'
-    siamese = True
+    model_name = 'LSTM'
+    siamese = False
 
     dim1, dim2 = X.size(1), X.size(2)
     if model_name == 'MLP':
@@ -75,7 +76,7 @@ def test_model():
         model = ConvNet(dim1, dim2, pdrop=dropout)
     elif model_name == 'LSTM':
         eta = eta_lstm
-        model = LSTM(input_size=dim2, output_size=dim2, device=device, pdrop=dropout)
+        model = LSTM(input_size=dim2, output_size=y.size(1), device=device, pdrop=dropout)
 
     elif model_name == 'SiameseLSTM':
         eta = eta_lstm_siam
@@ -91,9 +92,14 @@ def test_model():
         train(model, X_train, y_train, nb_epochs=nb_epochs, device=device, X_test=X_test, y_test=y_test, batch_size=batch_size, eta=eta, 
             weight_decay=weight_decay, verbose=verbose, classification=True)
 
-    print(f'Accuracy on train set : {output_to_accu(model, X_train, X_train_reg, y_train):.2f} %')
-    print(f'Accuracy on test set : {output_to_accu(model, X_test, X_test_reg, y_test):.2f} %')
-    plot_cm(model, X_test, X_test_reg, y_test, target_prices)
+    if siamese:
+        print(f'Accuracy on train set : {output_to_accu_siamese(model, X_train, X_train_reg, y_train):.2f} %')
+        print(f'Accuracy on test set : {output_to_accu_siamese(model, X_test, X_test_reg, y_test):.2f} %')
+        plot_cm_siamese(model, X_test, X_test_reg, y_test, target_prices)
+    else:
+        print(f'Accuracy on train set : {output_to_accu(model, X_train, y_train):.2f} %')
+        print(f'Accuracy on test set : {output_to_accu(model, X_test, y_test):.2f} %')
+        plot_cm(model, X_test, y_test, target_prices)
 
 
 if __name__ == "__main__":

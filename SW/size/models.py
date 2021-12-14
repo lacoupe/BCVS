@@ -28,32 +28,30 @@ class MLP(nn.Module):
 
     
 class ConvNet(nn.Module):
-    def __init__(self, dim1, dim2, dim3, dim1_kernel1=10, dim2_kernel1=2, dim1_kernel2=5, dim2_kernel2=2, pdrop=0.3):
+    def __init__(self, dim1, dim2, dim1_kernel1=10, dim2_kernel1=3, dim1_kernel2=5, dim2_kernel2=2, pdrop=0.3):
         super().__init__()
         
         self.dim1 = dim1
         self.dim2 = dim2
-        self.dim3 = dim3
         
-        self.conv1 = nn.Conv3d(1, 8, kernel_size=(dim1_kernel1, dim2_kernel1, dim3))
-        self.conv2 = nn.Conv3d(8, 16, kernel_size=(dim1_kernel2, dim2_kernel2, 1))
+        self.conv1 = nn.Conv2d(1, 8, kernel_size=(dim1_kernel1, dim2_kernel1))
+        self.conv2 = nn.Conv2d(8, 16, kernel_size=(dim1_kernel2, dim2_kernel2))
         self.pool = nn.MaxPool2d(kernel_size=2)
         
         self.fc1 = nn.Linear(16 * (dim1 - dim1_kernel1 - dim1_kernel2 + 2) * (dim2 - dim2_kernel1 - dim2_kernel2 + 2), 10)
         self.fc2 = nn.Linear(10, self.dim2)
         
         self.relu = nn.ReLU()
-        self.tanh = nn.Tanh()
-        self.sigmoid = nn.Sigmoid()
         self.softmax = nn.Softmax(dim=1)
+
         self.drop = nn.Dropout(pdrop)
-        self.drop3d = nn.Dropout3d(pdrop)
-        self.bn3d1 = nn.BatchNorm3d(8)
-        self.bn3d2 = nn.BatchNorm3d(16)
+        self.drop2d = nn.Dropout2d(pdrop)
+        self.bn2d1 = nn.BatchNorm2d(8)
+        self.bn2d2 = nn.BatchNorm2d(16)
 
     def forward(self, x):
         
-        x = x.view(x.size(0), 1, x.size(1), x.size(2), x.size(3))
+        x = x.view(x.size(0), 1, x.size(1), x.size(2))
         x = self.relu(self.drop3d(self.bn3d1(self.conv1(x))))
         x = self.relu(self.drop3d(self.bn3d2(self.conv2(x))))
     
