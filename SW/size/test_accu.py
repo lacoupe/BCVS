@@ -1,6 +1,5 @@
 from torch.utils.data.dataset import random_split
-from data import get_price_data
-from test import get_training_processed_data
+from data import get_data, get_processed_data
 from train_test import train, output_to_loss, output_to_accu, test, train_siamese
 from helpers import plot_cm
 from models import MLP, ConvNet, LSTM, SiameseLSTM, SiameseConvNet
@@ -11,22 +10,21 @@ import numpy as np
 def test_model():
 
     # Get data
-    _, _, df_input_all, target_prices  = get_price_data()
+    _, target_prices, _, features = get_data()
 
     # Data parameters
-    rebalance_freq = 'W-FRI'
     input_period = 30
     input_period_weeks = 6
     training_window = 10
 
     # Process data
-    X, X_reg, y, y_reg = get_training_processed_data(df_input_all, target_prices, rebalance_freq, input_period, input_period_weeks, training_window)
+    X, X_reg, y, y_reg = get_processed_data(features, target_prices, input_period, input_period_weeks, training_window)
 
     train_indices, test_indices, _, _ = train_test_split(range(len(y)), y, stratify=y, test_size=0.3, random_state=1)
     X_train, X_train_reg, y_train, y_train_reg, X_test, X_test_reg, y_test = X[train_indices], X_reg[train_indices], y[train_indices], y_reg[train_indices], X[test_indices], X_reg[test_indices], y[test_indices]
 
-    X_mean = X_train.mean(dim=[0, 1, 2], keepdim=True)
-    X_std = X_train.std(dim=[0, 1, 2], keepdim=True)
+    X_mean = X_train.mean(dim=[0, 1], keepdim=True)
+    X_std = X_train.std(dim=[0, 1], keepdim=True)
     X_train = X_train.sub_(X_mean).div_(X_std)
     X_test = X_test.sub_(X_mean).div_(X_std)
 
@@ -64,28 +62,29 @@ def test_model():
     nb_epochs = 200
     batch_size = 10
     verbose = 2
-    gamma = 1
+    gamma = 0.5
     
     model_name = 'SiameseLSTM'
-    # model_name = 'ConvNet'
     siamese = True
 
-    dim1, dim2, dim3 = X.size(1), X.size(2), X.size(3)
+    dim1, dim2 = X.size(1), X.size(2)
     if model_name == 'MLP':
         eta = eta_mlp
-        model = MLP(dim1, dim2, dim3, pdrop=dropout)
+        model = MLP(dim1, dim2, pdrop=dropout)
     elif model_name == 'ConvNet':
         eta = eta_convnet
-        model = ConvNet(dim1, dim2, dim3, pdrop=dropout)
+        model = ConvNet(dim1, dim2, pdrop=dropout)
     elif model_name == 'LSTM':
         eta = eta_lstm
-        model = LSTM(input_size=dim2 * dim3, output_size=dim2, device=device, pdrop=dropout)
+        model = LSTM(input_size=dim2, output_size=dim2, device=device, pdrop=dropout)
+
     elif model_name == 'SiameseLSTM':
         eta = eta_lstm_siam
-        model = SiameseLSTM(input_size=dim2 * dim3, output_size=X_reg.size(2), device=device, pdrop=dropout)
+        model = SiameseLSTM(input_size=dim2, output_size=X_reg.size(2), device=device, pdrop=dropout)
+
     elif model_name == 'SiameseConvNet':
         eta = eta_conv_siam
-        model = SiameseConvNet(dim1, dim3, pdrop=dropout)
+        model = SiameseConvNet(dim1, dim2, pdrop=dropout)
 
     model.to(device)
     if siamese:

@@ -150,7 +150,7 @@ class SiameseConvNet(nn.Module):
 
 class SiameseLSTM(nn.Module):
 
-    def __init__(self, input_size, output_size, device, hidden_size=50, num_layers=2, pdrop=0.1):
+    def __init__(self, input_size, output_size, device, hidden_size=50, num_layers=2, pdrop=0.2):
         super().__init__()
         
         self.device = device
@@ -229,7 +229,7 @@ class SiameseLSTM(nn.Module):
         # Forward Classification
         h0 = torch.randn(self.num_layers, x.size(0), self.hidden_size).to(self.device)
         c0 = torch.randn(self.num_layers, x.size(0), self.hidden_size).to(self.device)
-        output = x.view(x.size(0), x.size(1), x.size(2) * x.size(3))
+        output = x.view(x.size(0), x.size(1), x.size(2))
         output, _ = self.lstm_class(output, (h0.detach(), c0.detach()))
         output = self.softmax(self.fc(output[:, -1, :]))
 

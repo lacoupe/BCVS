@@ -4,6 +4,7 @@ import os
 from helpers import last_friday, last_month
 from dateutil.relativedelta import relativedelta
 import torch
+import pylab as pl
 
 
 def RSI(price, window):
@@ -17,98 +18,108 @@ def RSI(price, window):
     return rsi.fillna(0)
 
 
-def get_price_data():
-    data_path = os.path.join(os.path.dirname(__file__)) + '/data/prices.csv'
-    indices_price_excel = pd.read_csv(data_path, index_col=0, parse_dates=True).dropna()
-    indices_price_excel.head()
-    indices_price_excel.rename(columns={'SPI19 Index': 'SMALL', 'SMCI Index': 'MID', 'SPI21 Index': 'LARGE',
-                                        'MXEU0MT Index': 'Materials EU', 'MXEU0CS Index': 'Consumer Staple EU', 
-                                        'MXEU0IN Index': 'Industrials EU', 'MXEU0CD Index': 'Consumer Dis. EU',
-                                        'MXEU0HC Index': 'Health Care EU', 'MXEU0FN Index': 'Financials EU'}, inplace=True)
-    bench_price = indices_price_excel['SPI Index'].shift(1)
+# def get_price_data():
+#     data_path = os.path.join(os.path.dirname(__file__)) + '/data/prices.csv'
+#     indices_price_excel = pd.read_csv(data_path, index_col=0, parse_dates=True).dropna()
+#     indices_price_excel.rename(columns={'SPI19 Index': 'SMALL', 'SMCI Index': 'MID', 'SPI21 Index': 'LARGE',
+#                                         'MXEU0MT Index': 'Materials EU', 'MXEU0CS Index': 'Consumer Staple EU', 
+#                                         'MXEU0IN Index': 'Industrials EU', 'MXEU0CD Index': 'Consumer Dis. EU',
+#                                         'MXEU0HC Index': 'Health Care EU', 'MXEU0FN Index': 'Financials EU'}, inplace=True)
+#     bench_price = indices_price_excel['SPI Index'].shift(1)
 
-    # target_prices = indices_price_excel[['SMALL', 'MID', 'LARGE']].shift(1)
-    target_prices = indices_price_excel[['SMALL', 'LARGE']].shift(1)
-    features = indices_price_excel[indices_price_excel.columns[1:-1]].shift(1)
+#     # target_prices = indices_price_excel[['SMALL', 'MID', 'LARGE']].shift(1)
+#     target_prices = indices_price_excel[['SMALL', 'LARGE']].shift(1)
+#     features = indices_price_excel[indices_price_excel.columns[1:-1]].shift(1)
 
-    weeky_returns = features.rolling(5).apply(lambda x: np.log(x[-1] / x[0]) / len(x))
+#     weeky_returns = features.rolling(5).apply(lambda x: np.log(x[-1] / x[0]) / len(x))
 
-    ma50 = np.log(features / features.rolling(window=50).mean())
+#     ma50 = np.log(features / features.rolling(window=50).mean())
 
-    vol1 = features.rolling(window=21 * 1).std()
+#     vol1 = features.rolling(window=21 * 1).std()
 
-    mom1 = np.log(features.rolling(21 * 1).apply(lambda x: x[-1] / x[0]))  / (21 * 1)
+#     mom1 = np.log(features.rolling(21 * 1).apply(lambda x: x[-1] / x[0]))  / (21 * 1)
     
-    RSI5 = RSI(features, 5)
+#     RSI5 = RSI(features, 5)
 
-    ema_12 = features.ewm(span=12).mean()
-    ema_26 = features.ewm(span=26).mean()
-    MACD = ema_12 - ema_26
-    MACD_diff = MACD - MACD.ewm(span=9).mean()
+#     ema_12 = features.ewm(span=12).mean()
+#     ema_26 = features.ewm(span=26).mean()
+#     MACD = ema_12 - ema_26
+#     MACD_diff = MACD - MACD.ewm(span=9).mean()
 
-    df_dict = {}
-    df_input = pd.DataFrame()
-    for col in features.columns:
-        df_temp = pd.concat([
-                            ma50[col], mom1[col], vol1[col], RSI5[col], MACD[col], MACD_diff[col], weeky_returns[col]
-                            ], axis=1)
-        df_temp.columns = ['ma50', 'mo1', 'vol1', 'RSI9', 'MACD', 'MACD_diff', 'weekly_returns']
-        df_dict[col] = df_temp
+#     df_dict = {}
+#     df_input = pd.DataFrame()
+#     for col in features.columns:
+#         df_temp = pd.concat([
+#                             ma50[col], mom1[col], vol1[col], RSI5[col], MACD[col], MACD_diff[col], weeky_returns[col]
+#                             ], axis=1)
+#         df_temp.columns = ['ma50', 'mo1', 'vol1', 'RSI9', 'MACD', 'MACD_diff', 'weekly_returns']
+#         df_dict[col] = df_temp
 
-    df_input = pd.concat(df_dict, axis=1).dropna(axis=0, how='any')
+#     df_input = pd.concat(df_dict, axis=1).dropna(axis=0, how='any')
 
-    return features, bench_price, df_input, target_prices
+#     return features, bench_price, df_input, target_prices
 
 
-def get_training_processed_data(df_input_all, target_prices, rebalance_freq, input_period, input_period_weeks, training_window, classification=True):
+def fast_fracdiff(x, d):
 
-    last_date = target_prices.index[-1]
+    T = len(x)
+    np2 = int(2 ** np.ceil(np.log2(2 * T - 1)))
+    k = np.arange(1, T)
+    b = (1,) + tuple(np.cumprod((k - d - 1) / k))
+    z = (0,) * (np2 - T)
+    z1 = b + z
+    z2 = tuple(x) + z
+    dx = pl.ifft(pl.fft(z1) * pl.fft(z2))
+    return np.real(dx[0:T])
 
-    # if rebalance_freq == 'M':
-    #     last_date_train = last_month(last_date - relativedelta(weeks=input_period))
-    # else:
+
+def get_data():
+    data_path = os.path.join(os.path.dirname(__file__)) + '/data/data.csv'
+    data = pd.read_csv(data_path, index_col=0, parse_dates=True)
+
+    target_prices = data[['SMALL', 'LARGE']].shift(1).dropna()
+    bench_price = data['SPI'].shift(1).dropna()
+    features = data[data.columns[1:]].shift(1).dropna()
+
+    features_stationary = pd.DataFrame().reindex_like(features)
+    d_list = [0.4, 0.4, 0.4, 0., 0.2, 0.2, 0.2, 0.2, 0.4, 0.2, 0.2, 0.2, 0., 0.1, 0.3, 0.3, 0.3, 0.4, 0.3, 0., 0.1]
+
+    if len(d_list) != len(features.columns):
+        print(f'Error: d_list should have length {len(features.columns)} and has length {len(d_list)}')
+    for feature, d in zip(features.columns, d_list):
+        features_stationary[feature] = fast_fracdiff(features[feature], d)
+
+    return bench_price, target_prices, features, features_stationary
+
+
+def get_processed_data(features, target_prices, input_period, input_period_weeks, training_window):
+
+
     last_date_train = last_friday(target_prices.index[-input_period])
     
-    num_tickers = len(df_input_all.columns.get_level_values(0).unique())
-    num_features = len(df_input_all.columns.get_level_values(1).unique())
+    num_features = len(features.columns)
 
-    # Target data
-    returns = target_prices[:last_date_train].resample(rebalance_freq).apply(lambda x: np.log(x[-1] / x[0]) / len(x))
+    log_weekly_returns = target_prices[:last_date_train].resample('W-FRI').apply(lambda x: np.log(x[-1] / x[0]) / len(x))
 
-    # best_pred = returns.rank(axis=1).replace({1: 0., 2: 0., 3: 1.}).shift(-1)
-    best_pred = returns.rank(axis=1).replace({1: 0., 2: 1.}).shift(-1)
+    best_pred = log_weekly_returns.rank(axis=1).replace({1: 0., 2: 1.}).shift(-1)
 
-    # if rebalance_freq == 'M':
-    #     start_date = last_month(last_date_train - relativedelta(years=training_window))
-    # else:
     start_date = last_friday(last_date_train - relativedelta(years=training_window))
 
     df_output = best_pred.loc[start_date:].dropna()
-    df_output_reg = returns.shift(-1).loc[start_date:].dropna()
+    df_output_reg = log_weekly_returns.shift(-1).loc[start_date:].dropna()
 
-    # if rebalance_freq =='M':
-    #     start_date_input = (start_date - relativedelta(weeks=input_period)).replace(day=1) 
-    # else:
-        # start_date_input = start_date - relativedelta(days=input_period)
-        # start_date_input = start_date_input - relativedelta(days=(start_date_input.weekday()))
     start_date_input = target_prices.loc[:start_date].iloc[-21 * 3:].index[0]
     
-    df_input = df_input_all.loc[start_date_input:df_output.index[-1]]
+    df_input = features.loc[start_date_input:df_output.index[-1]]
     df_input_reg = target_prices.resample('W-FRI').apply(lambda x: np.log(x[-1] / x[0]) / len(x)).loc[start_date_input:df_output.index[-1]]
 
     X = []
     X_reg = []
     for idx in df_output.index:
-        # If we rebalance monthly, the input data will be weekly data
-        # if rebalance_freq == 'M':
-        #     dayofweek = {0:'Monday', 1:'Tuesday', 2:'Wednesday', 3:'Thursday', 4:'Friday', 5:'Saturday', 6:'Sunday'}
-        #     reb_freq_input = 'W-' + dayofweek[df_input_all.index[-1].weekday()][:3].upper()
-        #     df_input_period = df_input.loc[:idx].resample(reb_freq_input).mean().iloc[-input_period:]
-        # # If we rebalance weekly, the input data will be daily data
-        # else:
+
         df_input_period = df_input.loc[:idx].iloc[-input_period:]
         df_input_period_reg = df_input_reg.loc[:idx].iloc[-input_period_weeks:]
-        X_period = df_input_period.values.reshape(input_period, num_tickers, num_features)
+        X_period = df_input_period.values.reshape(input_period, num_features)
         X_period_reg = df_input_period_reg.values
         X.append(X_period)
         X_reg.append(X_period_reg)
