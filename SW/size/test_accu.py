@@ -13,8 +13,8 @@ def test_model():
     _, target_prices, _, features = get_data()
 
     # Data parameters
-    input_period = 30
-    input_period_weeks = 6
+    input_period = 42
+    input_period_weeks = 8
     training_window = 10
 
     # Process data
@@ -56,12 +56,12 @@ def test_model():
     eta_lstm_siam = 5e-3
     eta_conv_siam = 1e-4
 
-    weight_decay = 1e-4
+    weight_decay = 1e-5
     dropout = 0.2
     nb_epochs = 100
     batch_size = 10
     verbose = 2
-    gamma = 0.5
+    gamma = 0.1
     
     model_name = 'SiameseLSTM'
     siamese = True
