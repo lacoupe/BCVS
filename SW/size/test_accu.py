@@ -64,7 +64,7 @@ def test_model():
     batch_size = 20
     gamma = 0.5
 
-    nb_epochs = 100
+    nb_epochs = 60
 
     verbose = 2
     
@@ -90,7 +90,7 @@ def test_model():
         model = SiameseLSTM(input_size=dim2, output_size=X_reg.size(2), device=device, pdrop=dropout)
 
     model.to(device)
-    print(f'Number of parameters : {count_parameters(model)}')
+    print(f"Number of {model.__class__.__name__}'s parameters : {count_parameters(model)}")
 
     if siamese:
         train_siamese(model, X_train, X_train_reg, y_train, y_train_reg=y_train_reg, nb_epochs=nb_epochs, device=device, X_test=X_test, y_test=y_test, batch_size=batch_size, eta=eta, 
