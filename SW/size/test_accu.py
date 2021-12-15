@@ -54,7 +54,7 @@ def test_model():
     eta_mlp = 1e-3
     eta_convnet = 1e-4
     eta_lstm = 1e-3
-    eta_lstm_siam = 1e-3
+    eta_lstm_siam = 5e-4
 
     weight_decay = 5e-5
     dropout = 0.1

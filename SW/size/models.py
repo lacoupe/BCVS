@@ -92,7 +92,7 @@ class LSTM(nn.Module):
 
 class SiameseLSTM(nn.Module):
 
-    def __init__(self, input_size, output_size, device, hidden_size_reg=30, hidden_size_class=50, num_layers=3, pdrop=0.2):
+    def __init__(self, input_size, output_size, device, hidden_size_reg=30, hidden_size_class=30, num_layers=2, pdrop=0.1):
         super().__init__()
         
         self.device = device
