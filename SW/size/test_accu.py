@@ -61,7 +61,7 @@ def test_model():
     batch_size = 10
     gamma = 0.5
 
-    nb_epochs = 100
+    nb_epochs = 200
 
     verbose = 2
     
