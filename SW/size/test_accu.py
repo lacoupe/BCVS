@@ -1,3 +1,4 @@
+from numpy.lib.twodim_base import triu_indices
 from torch.utils.data.dataset import random_split
 from data import get_data, get_processed_data
 from train_test import train, output_to_loss, output_to_accu, test, train_siamese, output_to_accu_siamese
@@ -51,21 +52,21 @@ def test_model():
     y_test = y_test.to(device)
 
     eta_mlp = 1e-3
-    eta_convnet = 1e-3
-    eta_lstm = 5e-3
-    eta_lstm_siam = 5e-3
+    eta_convnet = 1e-4
+    eta_lstm = 1e-3
+    eta_lstm_siam = 1e-3
 
-    weight_decay = 1e-4
+    weight_decay = 5e-5
     dropout = 0.1
     batch_size = 10
-    gamma = 0.1
+    gamma = 0.5
 
-    nb_epochs = 100
+    nb_epochs = 200
 
     verbose = 2
     
-    model_name = 'LSTM'
-    siamese = False
+    model_name = 'SiameseLSTM'
+    siamese = True
 
     dim1, dim2 = X.size(1), X.size(2)
 

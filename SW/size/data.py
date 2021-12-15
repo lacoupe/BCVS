@@ -77,9 +77,9 @@ def get_data():
     data_path = os.path.join(os.path.dirname(__file__)) + '/data/data.csv'
     data = pd.read_csv(data_path, index_col=0, parse_dates=True)
 
-    target_prices = data[['SMALL', 'LARGE']].shift(1).dropna()
-    bench_price = data['SPI'].shift(1).dropna()
-    features = data[data.columns[1:]].shift(1).dropna()
+    target_prices = data[['SMALL', 'LARGE']].fillna('ffill').shift(1).dropna()
+    bench_price = data['SPI'].fillna('ffill').shift(1).dropna()
+    features = data[data.columns[1:]].fillna('ffill').shift(1).dropna()
 
     features_stationary = pd.DataFrame().reindex_like(features)
     d_list = [0.4, 0.4, 0.4, 0., 0.2, 0.2, 0.2, 0.2, 0.4, 0.2, 0.2, 0.2, 0., 0.1, 0.3, 0.3, 0.3, 0.4, 0.3, 0., 0.1]
@@ -108,7 +108,7 @@ def get_processed_data(features, target_prices, input_period, input_period_weeks
     df_output = best_pred.loc[start_date:].dropna()
     df_output_reg = log_weekly_returns.shift(-1).loc[start_date:].dropna()
 
-    start_date_input = target_prices.loc[:start_date].iloc[-21 * 3:].index[0]
+    start_date_input = target_prices.loc[:start_date].iloc[-252:].index[0]
     
     df_input = features.loc[start_date_input:df_output.index[-1]]
     df_input_reg = target_prices.resample('W-FRI').apply(lambda x: np.log(x[-1] / x[0]) / len(x)).loc[start_date_input:df_output.index[-1]]

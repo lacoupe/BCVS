@@ -3,16 +3,16 @@ from torch import nn
 
 
 class MLP(nn.Module):
-    def __init__(self, dim1, dim2, dim3, pdrop=0.2, hidden_size1=20, hidden_size2=15, hidden_size3=10):
+    def __init__(self, dim1, dim2, pdrop=0.2, hidden_size1=20, hidden_size2=15, hidden_size3=10):
         super().__init__()
 
-        self.fc1 = nn.Linear(dim1 * dim2 * dim3, hidden_size1)
+        self.fc1 = nn.Linear(dim1 * dim2, hidden_size1)
         self.fc2 = nn.Linear(hidden_size1, hidden_size2)
         self.fc3 = nn.Linear(hidden_size2, hidden_size3)
-        self.fc4 = nn.Linear(hidden_size3, dim2)
+        self.fc4 = nn.Linear(hidden_size3, 2)
         self.drop = nn.Dropout(pdrop)
         self.relu = nn.ReLU()
-        self.sigmoid = nn.Sigmoid()
+        
         self.softmax = nn.Softmax(dim=1)
         self.bn1 = nn.BatchNorm1d(hidden_size1)
         self.bn2 = nn.BatchNorm1d(hidden_size2)
@@ -28,32 +28,32 @@ class MLP(nn.Module):
 
     
 class ConvNet(nn.Module):
-    def __init__(self, dim1, dim2, dim1_kernel1=10, dim2_kernel1=3, dim1_kernel2=5, dim2_kernel2=2, pdrop=0.3):
+    def __init__(self, dim1, dim2, dim1_kernel1=10, dim2_kernel1=4, dim1_kernel2=5, dim2_kernel2=2, pdrop=0.3):
         super().__init__()
         
         self.dim1 = dim1
         self.dim2 = dim2
         
-        self.conv1 = nn.Conv2d(1, 8, kernel_size=(dim1_kernel1, dim2_kernel1))
-        self.conv2 = nn.Conv2d(8, 16, kernel_size=(dim1_kernel2, dim2_kernel2))
+        self.conv1 = nn.Conv2d(1, 32, kernel_size=(dim1_kernel1, dim2_kernel1))
+        self.conv2 = nn.Conv2d(32, 64, kernel_size=(dim1_kernel2, dim2_kernel2))
         self.pool = nn.MaxPool2d(kernel_size=2)
         
-        self.fc1 = nn.Linear(16 * (dim1 - dim1_kernel1 - dim1_kernel2 + 2) * (dim2 - dim2_kernel1 - dim2_kernel2 + 2), 10)
-        self.fc2 = nn.Linear(10, self.dim2)
+        self.fc1 = nn.Linear(64 * (dim1 - dim1_kernel1 - dim1_kernel2 + 2) * (dim2 - dim2_kernel1 - dim2_kernel2 + 2), 10)
+        self.fc2 = nn.Linear(10, 2)
         
         self.relu = nn.ReLU()
         self.softmax = nn.Softmax(dim=1)
 
         self.drop = nn.Dropout(pdrop)
         self.drop2d = nn.Dropout2d(pdrop)
-        self.bn2d1 = nn.BatchNorm2d(8)
-        self.bn2d2 = nn.BatchNorm2d(16)
+        self.bn2d1 = nn.BatchNorm2d(32)
+        self.bn2d2 = nn.BatchNorm2d(64)
 
     def forward(self, x):
         
         x = x.view(x.size(0), 1, x.size(1), x.size(2))
-        x = self.relu(self.drop3d(self.bn3d1(self.conv1(x))))
-        x = self.relu(self.drop3d(self.bn3d2(self.conv2(x))))
+        x = self.relu(self.drop2d(self.bn2d1(self.conv1(x))))
+        x = self.relu(self.drop2d(self.bn2d2(self.conv2(x))))
     
         x = x.flatten(start_dim=1)
         x = self.relu(self.drop(self.fc1(x)))
@@ -64,7 +64,7 @@ class ConvNet(nn.Module):
     
 class LSTM(nn.Module):
 
-    def __init__(self, input_size, output_size, device, hidden_size=50, num_layers=5, pdrop=0.1):
+    def __init__(self, input_size, output_size, device, hidden_size=20, num_layers=2, pdrop=0.1):
         super(LSTM, self).__init__()
         
         self.input_size = input_size
