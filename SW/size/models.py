@@ -3,7 +3,7 @@ from torch import nn
 
 
 class MLP(nn.Module):
-    def __init__(self, dim1, dim2, pdrop=0.2, hidden_size1=20, hidden_size2=15, hidden_size3=10):
+    def __init__(self, dim1, dim2, pdrop=0.2, hidden_size1=20, hidden_size2=20, hidden_size3=20):
         super().__init__()
 
         self.fc1 = nn.Linear(dim1 * dim2, hidden_size1)
@@ -34,11 +34,11 @@ class ConvNet(nn.Module):
         self.dim1 = dim1
         self.dim2 = dim2
         
-        self.conv1 = nn.Conv2d(1, 32, kernel_size=(dim1_kernel1, dim2_kernel1))
-        self.conv2 = nn.Conv2d(32, 64, kernel_size=(dim1_kernel2, dim2_kernel2))
+        self.conv1 = nn.Conv2d(1, 5, kernel_size=(dim1_kernel1, dim2_kernel1))
+        self.conv2 = nn.Conv2d(5, 10, kernel_size=(dim1_kernel2, dim2_kernel2))
         self.pool = nn.MaxPool2d(kernel_size=2)
         
-        self.fc1 = nn.Linear(64 * (dim1 - dim1_kernel1 - dim1_kernel2 + 2) * (dim2 - dim2_kernel1 - dim2_kernel2 + 2), 10)
+        self.fc1 = nn.Linear(10 * (dim1 - dim1_kernel1 - dim1_kernel2 + 2) * (dim2 - dim2_kernel1 - dim2_kernel2 + 2), 10)
         self.fc2 = nn.Linear(10, 2)
         
         self.relu = nn.ReLU()
@@ -46,8 +46,8 @@ class ConvNet(nn.Module):
 
         self.drop = nn.Dropout(pdrop)
         self.drop2d = nn.Dropout2d(pdrop)
-        self.bn2d1 = nn.BatchNorm2d(32)
-        self.bn2d2 = nn.BatchNorm2d(64)
+        self.bn2d1 = nn.BatchNorm2d(5)
+        self.bn2d2 = nn.BatchNorm2d(10)
 
     def forward(self, x):
         
@@ -64,7 +64,7 @@ class ConvNet(nn.Module):
     
 class LSTM(nn.Module):
 
-    def __init__(self, input_size, output_size, device, hidden_size=20, num_layers=2, pdrop=0.1):
+    def __init__(self, input_size, output_size, device, hidden_size=50, num_layers=2, pdrop=0.1):
         super(LSTM, self).__init__()
         
         self.input_size = input_size

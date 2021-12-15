@@ -48,14 +48,12 @@ def output_to_loss(model, X, y):
     return (loss / X.size(0)).cpu()
 
 
-def train(model, X_train, y_train, nb_epochs, device, X_test=None, y_test=None, i=None, eta=1e-3, weight_decay=0, batch_size=1, verbose=0, classification=True):
+def train(model, X_train, y_train, nb_epochs, device, X_test=None, y_test=None, i=None, eta=1e-3, weight_decay=0, batch_size=1, verbose=0):
     
     optimizer = torch.optim.Adam(model.parameters(), lr=eta, weight_decay=weight_decay)
-    if classification:
-        criterion = nn.BCELoss(reduction='none')
-    else:
-        criterion = nn.MSELoss()
-    
+
+    criterion = nn.BCELoss(reduction='none')
+
     model.train()
     
     if verbose in (1, 2):
@@ -67,9 +65,8 @@ def train(model, X_train, y_train, nb_epochs, device, X_test=None, y_test=None, 
     train_set = TensorDataset(X_train, y_train)    
     train_loader = DataLoader(train_set, batch_size=batch_size, shuffle=True, drop_last=True, num_workers=0)
 
-    if classification:
-        class_count = np.unique(y_train.cpu(), axis=0, return_counts=True)[1]
-        weights = torch.tensor(class_count / sum(class_count)).to(device)
+    class_count = np.unique(y_train.cpu(), axis=0, return_counts=True)[1]
+    weights = torch.tensor(class_count / sum(class_count)).to(device)
 
     for e in (tqdm(range(nb_epochs)) if (verbose == 3) else range(nb_epochs)):
         acc_loss = 0
@@ -78,8 +75,8 @@ def train(model, X_train, y_train, nb_epochs, device, X_test=None, y_test=None, 
             optimizer.zero_grad()
             output, _ = model(train_input)
             loss = criterion(output, train_target)
-            if classification:
-                loss = (loss * weights).mean()
+
+            loss = (loss * weights).mean()
             loss.backward()
             clip_grad_norm_(model.parameters(), 1)
             optimizer.step()

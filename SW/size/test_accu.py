@@ -15,14 +15,16 @@ def test_model():
 
     # Data parameters
     input_period = 42
-    input_period_weeks =10
+    input_period_reg = 10
     training_window = 10
 
     # Process data
-    X, X_reg, y, y_reg = get_processed_data(features, target_prices, input_period, input_period_weeks, training_window)
+    X, X_reg, y, y_reg = get_processed_data(features, target_prices, input_period, input_period_reg, training_window)
 
-    train_indices, test_indices, _, _ = train_test_split(range(len(y)), y, test_size=0.2, shuffle=False, random_state=1)
+    train_indices, test_indices, _, _ = train_test_split(range(len(y)), y, test_size=0.3, shuffle=False, random_state=1)
     X_train, X_train_reg, y_train, y_train_reg, X_test, X_test_reg, y_test = X[train_indices], X_reg[train_indices], y[train_indices], y_reg[train_indices], X[test_indices], X_reg[test_indices], y[test_indices]
+    print('Number of train sample', len(X_train))
+    print('Number of test sample', len(X_test))
 
     X_mean = X_train.mean(dim=[0, 1], keepdim=True)
     X_std = X_train.std(dim=[0, 1], keepdim=True)
@@ -41,13 +43,12 @@ def test_model():
     class_count_test = np.unique(y_test.cpu(), axis=0, return_counts=True)[1]
     weights_train = torch.tensor(class_count_train / sum(class_count_train))
     weights_test = torch.tensor(class_count_test / sum(class_count_test))
-
-    print('Allocation of best returns', weights_train.cpu().numpy())
-    print('Allocation of best returns', weights_test.cpu().numpy())
+    print('Allocation of best returns in train set :', weights_train.cpu().numpy())
+    print('Allocation of best returns in test set :', weights_test.cpu().numpy())
 
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-    print('Number of train sample', len(X_train))
-    print('Number of test sample', len(X_test))
+    print('Device available :', device)
+    
     X_train = X_train.to(device)
     X_train_reg = X_train_reg.to(device)
     y_train = y_train.to(device)
@@ -55,15 +56,12 @@ def test_model():
     X_test = X_test.to(device)
     y_test = y_test.to(device)
 
-    eta_mlp = 1e-3
-    eta_convnet = 1e-4
-    eta_lstm = 1e-3
-    eta_lstm_siam = 5e-4
-
-    weight_decay = 5e-5
-    dropout = 0.1
-    batch_size = 50
+    eta = 5e-4
+    weight_decay = 1e-5
+    dropout = 0.2
+    batch_size = 30
     gamma = 0.3
+    print(f'parameters of ML model : \n learning_rate = {eta}, weight_decay = {weight_decay}, dropout = {dropout}, batch_size = {batch_size}, gamma = {gamma}')
 
     nb_epochs = 100
 
@@ -75,19 +73,15 @@ def test_model():
     dim1, dim2 = X.size(1), X.size(2)
 
     if model_name == 'MLP':
-        eta = eta_mlp
         model = MLP(dim1, dim2, pdrop=dropout)
 
     elif model_name == 'ConvNet':
-        eta = eta_convnet
         model = ConvNet(dim1, dim2, pdrop=dropout)
 
     elif model_name == 'LSTM':
-        eta = eta_lstm
         model = LSTM(input_size=dim2, output_size=y.size(1), device=device, pdrop=dropout)
 
     elif model_name == 'SiameseLSTM':
-        eta = eta_lstm_siam
         model = SiameseLSTM(input_size=dim2, output_size=X_reg.size(2), device=device, pdrop=dropout)
 
     model.to(device)
@@ -98,7 +92,7 @@ def test_model():
             weight_decay=weight_decay, verbose=verbose, gamma=gamma)
     else:
         train(model, X_train, y_train, nb_epochs=nb_epochs, device=device, X_test=X_test, y_test=y_test, batch_size=batch_size, eta=eta, 
-            weight_decay=weight_decay, verbose=verbose, classification=True)
+            weight_decay=weight_decay, verbose=verbose)
 
     if siamese:
         print(f'Accuracy on train set : {output_to_accu_siamese(model, X_train, X_train_reg, y_train):.2f} %')
@@ -108,7 +102,6 @@ def test_model():
         print(f'Accuracy on train set : {output_to_accu(model, X_train, y_train):.2f} %')
         print(f'Accuracy on test set : {output_to_accu(model, X_test, y_test):.2f} %')
         plot_cm(model, X_test, y_test, target_prices)
-
 
 if __name__ == "__main__":
     test_model()

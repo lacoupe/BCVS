@@ -92,7 +92,7 @@ def get_data():
     return bench_price, target_prices, features, features_stationary
 
 
-def get_processed_data(features, target_prices, input_period, input_period_weeks, training_window):
+def get_processed_data(features, target_prices, input_period, input_period_reg, training_window):
 
 
     last_date_train = last_friday(target_prices.index[-input_period])
@@ -113,14 +113,14 @@ def get_processed_data(features, target_prices, input_period, input_period_weeks
     start_date_input = target_prices.loc[:start_date].iloc[-252:].index[0]
     
     df_input = features.loc[start_date_input:df_output.index[-1]]
-    df_input_reg = target_prices.resample('W-FRI').apply(lambda x: np.log(x[-1] / x[0]) / len(x)).loc[start_date_input:df_output.index[-1]]
+    df_input_reg = target_prices.rolling(5).apply(lambda x: np.log(x[-1] / x[0]) / len(x)).loc[start_date_input:df_output.index[-1]]
 
     X = []
     X_reg = []
     for idx in df_output.index:
 
         df_input_period = df_input.loc[:idx].iloc[-input_period:]
-        df_input_period_reg = df_input_reg.loc[:idx].iloc[-input_period_weeks:]
+        df_input_period_reg = df_input_reg.loc[:idx].iloc[-input_period_reg:]
         X_period = df_input_period.values.reshape(input_period, num_features)
         X_period_reg = df_input_period_reg.values
         X.append(X_period)
