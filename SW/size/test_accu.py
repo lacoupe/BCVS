@@ -37,9 +37,12 @@ def test_model():
     y_reg_std = y_train_reg.std(dim=[0, 1], keepdim=True)
     y_train_reg = y_train_reg.sub_(y_reg_mean).div_(y_reg_std)
 
-    class_count = np.unique(y_train.cpu(), axis=0, return_counts=True)[1]
-    weights = torch.tensor(class_count / sum(class_count))
-    print('Allocation of best returns', weights)
+    class_count_train = np.unique(y_train.cpu(), axis=0, return_counts=True)[1]
+    class_count_test = np.unique(y_test.cpu(), axis=0, return_counts=True)[1]
+    weights_train = torch.tensor(class_count_train / sum(class_count_train))
+    weights_test = torch.tensor(class_count_test / sum(class_count_test))
+    print('Allocation of best returns', weights_train)
+    print('Allocation of best returns', weights_test)
 
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     print('Number of train sample', len(X_train))
