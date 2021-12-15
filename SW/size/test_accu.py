@@ -14,7 +14,7 @@ def test_model():
     _, target_prices, _, features = get_data()
 
     # Data parameters
-    input_period = 42
+    input_period = 21
     input_period_reg = 10
     training_window = 10
 
@@ -56,14 +56,14 @@ def test_model():
     X_test = X_test.to(device)
     y_test = y_test.to(device)
 
-    eta = 5e-4
-    weight_decay = 1e-5
-    dropout = 0.1
+    eta = 1e-3
+    weight_decay = 1e-4
+    dropout = 0.15
     batch_size = 30
     gamma = 0.3
     print(f'parameters of ML model : \nlearning_rate = {eta}, weight_decay = {weight_decay}, dropout = {dropout}, batch_size = {batch_size}, gamma = {gamma}')
 
-    nb_epochs = 50
+    nb_epochs = 40
 
     verbose = 2
     
