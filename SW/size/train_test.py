@@ -134,7 +134,7 @@ def train_siamese(model, X_train, X_train_reg, y_train, y_train_reg, nb_epochs, 
         test_loss_list = []
     
     train_set = TensorDataset(X_train, X_train_reg, y_train, y_train_reg)    
-    train_loader = DataLoader(train_set, batch_size=batch_size, shuffle=False, drop_last=True, num_workers=0)
+    train_loader = DataLoader(train_set, batch_size=batch_size, shuffle=True, drop_last=True, num_workers=0)
 
     class_count = np.unique(y_train.cpu(), axis=0, return_counts=True)[1]
     weights = torch.tensor(class_count / sum(class_count)).to(device)

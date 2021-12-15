@@ -2,9 +2,10 @@ from numpy.core.numeric import True_
 import pandas as pd
 import numpy as np
 import torch
-from models import MLP, ConvNet, LSTM, MLP_REG, ConvNet_REG, LSTM_REG
+from models import MLP, ConvNet, LSTM
 from train_test import train
-from data import get_price_data, get_training_processed_data
+from data import get_data, get_processed_data
+# from data import get_price_data, get_training_processed_data
 pd.set_option('display.max_columns', None)
 pd.set_option('display.max_rows', None)
 
@@ -19,7 +20,7 @@ def strat(df_input_all, price, rebalance_freq, model_name='MLP', nb_epochs=50,
     num_tickers = len(df_input_all.columns.get_level_values(0).unique())
     num_features = len(df_input_all.columns.get_level_values(1).unique())
 
-    X, y, _ = get_training_processed_data(df_input_all, price, rebalance_freq, input_period, training_window, classification)
+    X, y, _ = get_processed_data(df_input_all, price, rebalance_freq, input_period, training_window, classification)
 
     mean = X.mean(dim=[0, 1, 2], keepdim=True)
     std = X.std(dim=[0, 1, 2], keepdim=True)
@@ -30,26 +31,17 @@ def strat(df_input_all, price, rebalance_freq, model_name='MLP', nb_epochs=50,
     y = y.to(device)
 
     dim1, dim2, dim3 = X.size(1), X.size(2), X.size(3)
-    if classification:
-        if model_name == 'MLP':
-            eta = eta_mlp
-            model = MLP(dim1, dim2, dim3)
-        elif model_name == 'ConvNet':
-            eta = eta_convnet
-            model = ConvNet(dim1, dim2, dim3)
-        elif model_name == 'LSTM':
-            eta = eta_lstm
-            model = LSTM(input_size=num_tickers * num_features, output_size=num_tickers, device=device)
-    else:
-        if model_name == 'MLP':
-            eta = eta_mlp
-            model = MLP_REG(dim1, dim2, dim3)
-        elif model_name == 'ConvNet':
-            eta = eta_convnet
-            model = ConvNet_REG(dim1, dim2, dim3)
-        elif model_name == 'LSTM':
-            eta = eta_lstm
-            model = LSTM_REG(input_size=num_tickers * num_features, output_size=num_tickers, device=device)
+
+    if model_name == 'MLP':
+        eta = eta_mlp
+        model = MLP(dim1, dim2, dim3)
+    elif model_name == 'ConvNet':
+        eta = eta_convnet
+        model = ConvNet(dim1, dim2, dim3)
+    elif model_name == 'LSTM':
+        eta = eta_lstm
+        model = LSTM(input_size=num_tickers * num_features, output_size=num_tickers, device=device)
+
     model.to(device)
 
     train(model, X, y, nb_epochs=nb_epochs, device=device, batch_size=batch_size, eta=eta, verbose=verbose, weight_decay=weight_decay, classification=classification)
@@ -73,17 +65,17 @@ def strat(df_input_all, price, rebalance_freq, model_name='MLP', nb_epochs=50,
     return pd.DataFrame(index=[model_name], columns=price.columns, data=out.cpu().detach().numpy())
 
 def run():
-    price, _, df_X = get_price_data()
+    price, _, df_X = get_data()
 
-    models_list = ['MLP', 'ConvNet', 'LSTM']
+    # models_list = ['MLP', 'ConvNet', 'LSTM']
     # models_list = ['MLP', 'ConvNet']
-    # models_list = ['MLP']
+    models_list = ['MLP']
 
     output = pd.DataFrame(index=['Ensemble'], columns=price.columns)
 
     batch_size = 10
     training_window = 10
-    nb_epochs = 100
+    nb_epochs = 2
     verbose = 3
     rebalance_freq = 'W-FRI'
     input_period_days = 42
@@ -94,7 +86,6 @@ def run():
     eta_lstm = 1e-3
 
     weight_decay = 1e-4
-    classification = True
 
     if rebalance_freq == 'M':
         input_period = input_period_weeks
@@ -108,7 +99,7 @@ def run():
                           input_period=input_period, batch_size=batch_size,
                           training_window=training_window, verbose=verbose, 
                           eta_mlp=eta_mlp, eta_convnet=eta_convnet, eta_lstm=eta_lstm, weight_decay=weight_decay,
-                          classification=classification)
+                          )
         output = pd.concat([output, df_output])
         
         if i == 0:
