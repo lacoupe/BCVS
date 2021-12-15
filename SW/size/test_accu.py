@@ -15,7 +15,7 @@ def test_model():
 
     # Data parameters
     input_period = 42
-    input_period_weeks = 8
+    input_period_weeks =10
     training_window = 10
 
     # Process data
@@ -41,8 +41,9 @@ def test_model():
     class_count_test = np.unique(y_test.cpu(), axis=0, return_counts=True)[1]
     weights_train = torch.tensor(class_count_train / sum(class_count_train))
     weights_test = torch.tensor(class_count_test / sum(class_count_test))
-    print('Allocation of best returns', weights_train)
-    print('Allocation of best returns', weights_test)
+
+    print('Allocation of best returns', weights_train.cpu().numpy())
+    print('Allocation of best returns', weights_test.cpu().numpy())
 
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     print('Number of train sample', len(X_train))
@@ -61,10 +62,10 @@ def test_model():
 
     weight_decay = 5e-5
     dropout = 0.1
-    batch_size = 20
+    batch_size = 50
     gamma = 0.3
 
-    nb_epochs = 60
+    nb_epochs = 100
 
     verbose = 2
     

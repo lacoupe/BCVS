@@ -192,7 +192,7 @@ def train_siamese(model, X_train, X_train_reg, y_train, y_train_reg, nb_epochs, 
             # test_loss_list.append(test_loss)
                     
     if verbose in (1, 2):
-        _, axs = plt.subplots(figsize=(12,8))
+        _, axs = plt.subplots(figsize=(8,4))
         # axs[0].plot(list(range(nb_epochs)), train_loss_list, label='Train loss')
         # axs[0].plot(list(range(nb_epochs)), test_loss_list, label='Test loss')
         # axs[0].legend()
