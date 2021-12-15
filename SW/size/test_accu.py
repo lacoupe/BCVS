@@ -61,15 +61,15 @@ def test_model():
 
     weight_decay = 5e-5
     dropout = 0.1
-    batch_size = 10
+    batch_size = 20
     gamma = 0.5
 
-    nb_epochs = 200
+    nb_epochs = 100
 
     verbose = 2
     
-    model_name = 'LSTM'
-    siamese = False
+    model_name = 'SiameseLSTM'
+    siamese = True
 
     dim1, dim2 = X.size(1), X.size(2)
 
