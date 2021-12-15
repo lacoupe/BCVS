@@ -22,7 +22,6 @@ def test_model():
     X, X_reg, y, y_reg = get_processed_data(features, target_prices, input_period, input_period_weeks, training_window)
 
     train_indices, test_indices, _, _ = train_test_split(range(len(y)), y, test_size=0.2, shuffle=False, random_state=1)
-    print(train_indices)
     X_train, X_train_reg, y_train, y_train_reg, X_test, X_test_reg, y_test = X[train_indices], X_reg[train_indices], y[train_indices], y_reg[train_indices], X[test_indices], X_reg[test_indices], y[test_indices]
 
     X_mean = X_train.mean(dim=[0, 1], keepdim=True)
@@ -66,8 +65,8 @@ def test_model():
 
     verbose = 2
     
-    model_name = 'SiameseLSTM'
-    siamese = True
+    model_name = 'LSTM'
+    siamese = False
 
     dim1, dim2 = X.size(1), X.size(2)
 

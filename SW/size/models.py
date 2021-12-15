@@ -117,8 +117,8 @@ class SiameseLSTM(nn.Module):
         # self.lstm3 = nn.LSTM(input_size=1, hidden_size=self.hidden_size, 
         #                     num_layers=self.num_layers, batch_first=True, dropout=self.dropout)
 
-        self.fc1 = nn.Linear(hidden_size_reg, 1)
-        self.fc2 = nn.Linear(hidden_size_reg, 1)
+        self.fc1 = nn.Linear(hidden_size_reg, 2)
+        self.fc2 = nn.Linear(hidden_size_reg, 2)
         # self.fc3 = nn.Linear(hidden_size, 1)
 
         # Classification
@@ -138,14 +138,16 @@ class SiameseLSTM(nn.Module):
         h0 = torch.randn(self.num_layers, x.size(0), self.hidden_size_reg).to(self.device)
         c0 = torch.randn(self.num_layers, x.size(0), self.hidden_size_reg).to(self.device)
         x, _ = self.lstm1(x, (h0.detach(), c0.detach()))
-        x = self.fc1(x[:, -1, :])
+        # x = self.fc1(x[:, -1, :])
+        x = self.softmax(self.fc1(x[:, -1, :]))
         return x
 
     def forward_reg2(self, x):
         h0 = torch.randn(self.num_layers, x.size(0), self.hidden_size_reg).to(self.device)
         c0 = torch.randn(self.num_layers, x.size(0), self.hidden_size_reg).to(self.device)
         x, _ = self.lstm2(x, (h0.detach(), c0.detach()))
-        x = self.fc2(x[:, -1, :])
+        # x = self.fc2(x[:, -1, :])
+        x = self.softmax(self.fc1(x[:, -1, :]))
         return x
 
     # def forward_reg3(self, x):
