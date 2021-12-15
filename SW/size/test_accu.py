@@ -62,7 +62,7 @@ def test_model():
     weight_decay = 5e-5
     dropout = 0.1
     batch_size = 20
-    gamma = 0.5
+    gamma = 0.3
 
     nb_epochs = 60
 
