@@ -48,13 +48,13 @@ def tune_model():
     y_test = y_test.to(device)
 
     # Grid parameters
-    learning_rates = [1e-3, 1e-2]
+    learning_rates = [5e-4, 1e-3, 1e-2]
     weight_decays = [1e-3]
     dropouts = [0.1, 0.2]
-    batch_sizes = [20, 40, 60]
+    batch_sizes = [20, 40]
 
     # Fixed ML parameters
-    nb_epochs = 50
+    nb_epochs = 100
 
     dim1, dim2 = X.size(1), X.size(2)
 
