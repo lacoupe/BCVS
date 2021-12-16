@@ -16,90 +16,50 @@ pd.set_option('display.width', 200)
 import os
 os.environ['KMP_DUPLICATE_LIB_OK']='True'
 
-def backtest_strat(df_input_all, price, rebalance_freq, model_name='MLP', 
-                   nb_epochs=50, nb_epochs_first=200, input_period=8, training_window=5, 
-                   batch_size=1, verbose=0, threshold=0.4, eta=1e-3, weight_decay=0):
+def backtest_strat(features, target_prices, model_name='MLP',
+                   nb_epochs=50, input_period=8, training_window=5, 
+                   batch_size=10, verbose=0, eta=1e-3, weight_decay=0):
 
     print('Backtesting model ' + model_name)
 
-    num_tickers = len(df_input_all.columns.get_level_values(0).unique())
-    num_features = len(df_input_all.columns.get_level_values(1).unique())
-    
+    num_features = len(features.columns)  
+
     # Target data
-    returns = price.pct_change().shift(1).resample(rebalance_freq).agg(lambda x: (x + 1).prod() - 1)
-    best_pred = returns.rank(axis=1).replace({1: 0., 2: 0., 3: 1.}).shift(-1)
+    forward_weekly_returns = target_prices.rolling(5).apply(lambda x: np.log(x[-1] / x[0]) / len(x)).shift(-5)
+    best_pred = forward_weekly_returns.rank(axis=1).replace({1: 0., 2: 1.})
     
     prob_output = []
     
-    if rebalance_freq == 'M':
-        # The moving window every 6 month
-        first_end_date = last_month(df_input_all.index[0] + relativedelta(years=training_window) + relativedelta(weeks=input_period))
-        all_end_dates = best_pred.loc[first_end_date:].asfreq('6M').index
-    else:
-        # The moving window every 26 weeks
-        first_end_date = next_friday(df_input_all.index[input_period] + relativedelta(years=training_window))#  + relativedelta(days=input_period))
-        all_end_dates = best_pred.loc[first_end_date:].asfreq('W-FRI')[::26].index
+    # The moving window every 26 weeks
+    first_end_date = next_friday(features.index[input_period] + relativedelta(years=training_window))
+    all_end_dates = best_pred.loc[first_end_date:].asfreq('W-FRI')[::26].index
 
     for i, end_date in enumerate(tqdm(all_end_dates)):
 
-        # The first date input must before the first date output
-        if rebalance_freq =='M':
-            # Make sur the input period start the 1st of the month
-            start_date = last_month(end_date - relativedelta(years=training_window))
-            start_date_input = (start_date - relativedelta(weeks=input_period)).replace(day=1) 
-        else:
-            start_date = next_friday(end_date - relativedelta(years=training_window))
-            # start_date_input = start_date - relativedelta(days=input_period)
-            start_date_input = df_input_all.loc[:start_date].iloc[-input_period:].index[0]
-            # print('start_date_input', start_date_input)
-            # Make sur the input period start a monday
-            # start_date_input = start_date_input - relativedelta(days=(start_date_input.weekday()))
+        start_date = next_friday(end_date - relativedelta(years=training_window))
+        start_date_input = features.loc[:start_date].iloc[-input_period:].index[0]
 
-        # print('end_date', end_date)
-        # print('start_date', start_date)
-        # print('start_Date_input', start_date_input)
-        df_input = df_input_all.loc[start_date_input:end_date]
+        df_input = features.loc[start_date_input:end_date]
         df_output = best_pred.loc[start_date:end_date]
-        # print(df_input.head())
+
         X = []
         for idx in df_output.index:
-            # print('index', idx)
-            # If we rebalance monthly, the input data will be weekly data
-            if rebalance_freq == 'M':
-                df_input_period = df_input.loc[:idx].resample('W').mean().iloc[-input_period:]
-            # If we rebalance weekly, the input data will be daily data
-            else:
-                df_input_period = df_input.loc[:idx].iloc[-input_period:]
-                # print(df_input_period.head())
-
-            # print(len(df_input_period))
-            X_period = df_input_period.values.reshape(input_period, num_tickers, num_features)
+            df_input_period = df_input.loc[:idx].iloc[-input_period:]
+            X_period = df_input_period.values.reshape(input_period, num_features)
             X.append(X_period)
 
         X = np.array(X)
         y = df_output.values
         
-        # Find the first prediction date
-        if i == 0:
-            if rebalance_freq == 'M':
-                first_start_date_test = end_date - relativedelta(months=5)
-            else:
-                first_start_date_test = end_date - relativedelta(weeks=25)
+        first_start_date_test = end_date - relativedelta(weeks=25)
         
-        if rebalance_freq == 'M':
-            start_date_test = (end_date - relativedelta(months=5))
-            # Make sur the first test date is the end of the month
-            year_test, month_test = start_date_test.year, start_date_test.month
-            start_date_test = start_date_test.replace(day=calendar.monthrange(year_test, month_test)[1])
-            split_index = df_output.index.get_loc(start_date_test)    
-        else:
-            start_date_test = end_date - relativedelta(weeks=25)
-            # Make sur the first test date is a friday
-            delta_days = 4 - start_date_test.weekday()
-            if delta_days < 0:
-                delta_days += 7
-            start_date_test = start_date_test + relativedelta(days=delta_days)
-            split_index = df_output.index.get_loc(start_date_test)  
+        start_date_test = end_date - relativedelta(weeks=25)
+        # Make sur the first test date is a friday
+        delta_days = 4 - start_date_test.weekday()
+        if delta_days < 0:
+            delta_days += 7
+        start_date_test = start_date_test + relativedelta(days=delta_days)
+        split_index = df_output.index.get_loc(start_date_test)  
         
         # Create train and test set
         X_train, y_train = X[:split_index], y[:split_index]
@@ -202,7 +162,6 @@ def run_backtest():
     perf_bench = price_to_perf(bench_price.loc[df_pred_dict['Ensemble'].index[0]:df_pred_dict['Ensemble'].index[-1]], log=False)
     performance_plot(df_pred_dict, daily_returns, bench_price, log=True)
     annual_alpha_plot(perf_bench, df_pred_dict['Ensemble'], daily_returns)
-    # index_pred_plot(df_pred_dict['Ensemble'], daily_returns)
 
 if __name__ == "__main__":
     run_backtest()
