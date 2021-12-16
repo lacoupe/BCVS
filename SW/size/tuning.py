@@ -48,13 +48,13 @@ def tune_model():
     y_test = y_test.to(device)
 
     # Grid parameters
-    learning_rates = [1e-4, 1e-3, 1e-2]
-    weight_decays = [1e-3, 1e-2]
+    learning_rates = [1e-3, 1e-2]
+    weight_decays = [1e-3]
     dropouts = [0.1, 0.2]
     batch_sizes = [20, 40, 60]
 
     # Fixed ML parameters
-    nb_epochs = 40
+    nb_epochs = 50
 
     dim1, dim2 = X.size(1), X.size(2)
 
@@ -65,8 +65,13 @@ def tune_model():
                 for drop in tqdm(dropouts, leave=False, position=3):
                     model = LSTM(input_size=dim2, output_size=y.size(1), device=device, pdrop=drop).to(device)
                     train(model, X_train, y_train, nb_epochs, device=device, batch_size=b, eta=lr, weight_decay=w, verbose=0)
-                    tuning_list.append([lr, w, drop, nb_epochs, b, np.round(output_to_loss(model, X_test, y_test).item(), 2), np.round(output_to_accu(model, X_test, y_test), 2)])
-    print(pd.DataFrame(data=tuning_list, columns=['Learning_rate', 'Weight_decay', 'Dropout', 'Nb_epochs', 'Batch size', 'Loss', 'Accuracy']).sort_values('Accuracy').to_string(index=False))
+                    tuning_list.append([lr, w, drop, nb_epochs, b, 
+                                        np.round(output_to_loss(model, X_test, y_test).item(), 2), 
+                                        np.round(output_to_accu(model, X_train, y_train), 2),
+                                        np.round(output_to_accu(model, X_test, y_test), 2)
+                                        ])
+    print(pd.DataFrame(data=tuning_list, columns=['Learning_rate', 'Weight_decay', 
+                                                'Dropout', 'Nb_epochs', 'Batch size', 'Loss', 'Train Accuracy', 'Test Accuracy']).sort_values('Test Accuracy').to_string(index=False))
 
 if __name__ == "__main__":
     tune_model()
