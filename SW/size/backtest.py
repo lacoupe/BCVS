@@ -41,6 +41,7 @@ def backtest_strat(features, target_prices, model_name='MLP',
 
         df_input = features.loc[start_date_input:end_date]
         df_output = best_pred.loc[start_date:end_date]
+        print(len(df_output))
 
         X = []
         for idx in df_output.index:
@@ -51,7 +52,8 @@ def backtest_strat(features, target_prices, model_name='MLP',
         X = np.array(X)
         y = df_output.values
         
-        first_start_date_test = end_date - relativedelta(weeks=25)
+        if i == 0:
+            first_start_date_test = end_date - relativedelta(weeks=25)
         
         start_date_test = end_date - relativedelta(weeks=25)
         # Make sur the first test date is a friday
@@ -84,23 +86,25 @@ def backtest_strat(features, target_prices, model_name='MLP',
         y_train = y_train.to(device)
         y_test = y_test.to(device)
 
-        # Initialize ML models only at first iteration
-        dim1, dim2, dim3 = X_train.size(1), X_train.size(2), X_train.size(3)
+        dim1, dim2 = X_train.size(1), X_train.size(2)
         if model_name == 'MLP':
-            model = MLP(dim1, dim2, dim3)
+            model = MLP(dim1, dim2)
+
         elif model_name == 'ConvNet':
-            model = ConvNet(dim1, dim2, dim3)
+            model = ConvNet(dim1, dim2)
+
         elif model_name == 'LSTM':
             model = LSTM(input_size=num_features, output_size=2, device=device)
-        model.to(device)
 
-        # More epochs needed for the first iteration 
+        model.to(device)
 
         # Train the model
         train(model, X_train, y_train, nb_epochs, X_test, y_test, i, eta=eta, weight_decay=weight_decay, batch_size=batch_size, verbose=verbose)
 
         # Get predictions
         prob = test(model, X_test)
+        print(len(prob))
+        print(len(y_test))
         prob_output.append(prob)
 
     prob_output = np.array(prob_output).reshape(len(all_end_dates) * X_test.size(0), y_test.size(1))
@@ -112,7 +116,7 @@ def run_backtest():
 
     print('GPU available :', torch.cuda.is_available())
     
-    _, target_prices, _, features = get_data()
+    bench_price, target_prices, _, features = get_data()
 
     # models_list = ['MLP', 'ConvNet', 'LSTM']
     # models_list = ['MLP', 'ConvNet']
@@ -124,7 +128,7 @@ def run_backtest():
     batch_size = 5
     verbose = 0
     training_window = 5
-    nb_epochs = 2
+    nb_epochs = 0
     input_period_days = 42
     input_period_reg = 8
     eta = 1e-3
@@ -137,7 +141,7 @@ def run_backtest():
                                                   model_name=model_name, nb_epochs=nb_epochs, 
                                                   input_period=input_period, 
                                                   batch_size=batch_size, verbose=verbose, 
-                                                  training_window=training_window, threshold=threshold, 
+                                                  training_window=training_window,
                                                   eta=eta, weight_decay=weight_decay)
         df_pred_dict[model_name] = prob_to_pred(df_prob_dict[model_name], threshold)
         
