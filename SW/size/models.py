@@ -28,7 +28,7 @@ class MLP(nn.Module):
 
     
 class ConvNet(nn.Module):
-    def __init__(self, dim1, dim2, dim1_kernel1=10, dim2_kernel1=4, dim1_kernel2=5, dim2_kernel2=2, pdrop=0.3):
+    def __init__(self, dim1, dim2, pdrop=0.3, dim1_kernel1=10, dim2_kernel1=4, dim1_kernel2=5, dim2_kernel2=2):
         super().__init__()
         
         self.dim1 = dim1

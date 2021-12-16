@@ -12,7 +12,7 @@ def tune_model():
     # Get data
     _, target_prices, _, features = get_data()
 
-    input_period = 20
+    input_period = 42
     input_period_reg = 10
     training_window = 12
 
@@ -48,13 +48,13 @@ def tune_model():
     y_test = y_test.to(device)
 
     # Grid parameters
-    learning_rates = [5e-4, 1e-3, 1e-2]
+    learning_rates = [5e-4, 1e-3]
     weight_decays = [1e-3]
     dropouts = [0.1, 0.2]
     batch_sizes = [20, 40]
 
     # Fixed ML parameters
-    nb_epochs = 100
+    nb_epochs = 40
 
     dim1, dim2 = X.size(1), X.size(2)
 
@@ -64,6 +64,7 @@ def tune_model():
             for w in tqdm(weight_decays, leave=False, position=2):
                 for drop in tqdm(dropouts, leave=False, position=3):
                     model = LSTM(input_size=dim2, output_size=y.size(1), device=device, pdrop=drop).to(device)
+                    # model = ConvNet(dim1, dim2, pdrop=drop)
                     train(model, X_train, y_train, nb_epochs, device=device, batch_size=b, eta=lr, weight_decay=w, verbose=0)
                     tuning_list.append([lr, w, drop, nb_epochs, b, 
                                         np.round(output_to_loss(model, X_test, y_test).item(), 2), 

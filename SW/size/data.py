@@ -102,9 +102,9 @@ def get_processed_data(features, target_prices, input_period, input_period_reg, 
 
     # log_weekly_returns = target_prices[:last_date_train].resample('W-FRI').apply(lambda x: np.log(x[-1] / x[0]) / len(x))
 
-    forward_weekly_returns = target_prices.rolling(5).apply(lambda x: np.log(x[-1] / x[0]) / len(x)).shift(5)
+    forward_weekly_returns = target_prices.rolling(5).apply(lambda x: np.log(x[-1] / x[0]) / len(x)).shift(-5)
 
-    best_pred = forward_weekly_returns.rank(axis=1).replace({1: 0., 2: 1.}).shift(-1)
+    best_pred = forward_weekly_returns.rank(axis=1).replace({1: 0., 2: 1.})
 
     start_date = last_friday(last_date_train - relativedelta(years=training_window))
 
