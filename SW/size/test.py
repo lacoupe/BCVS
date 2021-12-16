@@ -68,7 +68,7 @@ def run():
 
     batch_size = 10
     training_window = 10
-    nb_epochs = 30
+    nb_epochs = 10
     verbose = 3
     input_period = 20
     
