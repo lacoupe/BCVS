@@ -9,7 +9,7 @@ import calendar
 from helpers import performance_plot, resume_backtest, annual_alpha_plot, price_to_perf, last_month, next_friday, prob_to_pred
 from models import MLP, ConvNet, LSTM
 from train_test import train, test
-from data import get_price_data
+from data import get_data
 pd.set_option('display.max_columns', None)
 pd.set_option('display.width', 200)
 
@@ -91,7 +91,7 @@ def backtest_strat(features, target_prices, model_name='MLP',
         elif model_name == 'ConvNet':
             model = ConvNet(dim1, dim2, dim3)
         elif model_name == 'LSTM':
-            model = LSTM(input_size=num_tickers * num_features, output_size=num_tickers, device=device)
+            model = LSTM(input_size=num_features, output_size=2, device=device)
         model.to(device)
 
         # More epochs needed for the first iteration 
@@ -103,8 +103,6 @@ def backtest_strat(features, target_prices, model_name='MLP',
         prob = test(model, X_test)
         prob_output.append(prob)
 
-    # pred_output = np.array(pred_output).reshape(len(all_end_dates) * X_test.size(0), y_test.size(1))
-    # df_pred = pd.DataFrame(index=best_pred[first_start_date_test:end_date].index, data=pred_output, columns=best_pred.columns)
     prob_output = np.array(prob_output).reshape(len(all_end_dates) * X_test.size(0), y_test.size(1))
     df_prob = pd.DataFrame(index=best_pred[first_start_date_test:end_date].index, data=prob_output, columns=best_pred.columns)
     
@@ -114,11 +112,11 @@ def run_backtest():
 
     print('GPU available :', torch.cuda.is_available())
     
-    price, bench_price, df_X = get_price_data()
+    _, target_prices, _, features = get_data()
 
-    models_list = ['MLP', 'ConvNet', 'LSTM']
+    # models_list = ['MLP', 'ConvNet', 'LSTM']
     # models_list = ['MLP', 'ConvNet']
-    # models_list = ['MLP']
+    models_list = ['MLP']
     df_pred_dict = {}
     df_prob_dict = {}
 
@@ -127,19 +125,15 @@ def run_backtest():
     verbose = 0
     training_window = 5
     nb_epochs = 2
-    rebalance_freq = 'W-FRI'
     input_period_days = 42
-    input_period_weeks = 8
+    input_period_reg = 8
     eta = 1e-3
     weight_decay = 1e-4
 
-    if rebalance_freq == 'M':
-        input_period = input_period_weeks
-    else:
-        input_period = input_period_days
+    input_period = input_period_days
 
     for i, model_name in enumerate(models_list):
-        df_prob_dict[model_name] = backtest_strat(df_input_all=df_X, price=price, rebalance_freq=rebalance_freq, 
+        df_prob_dict[model_name] = backtest_strat(features=features, target_prices=target_prices,
                                                   model_name=model_name, nb_epochs=nb_epochs, 
                                                   input_period=input_period, 
                                                   batch_size=batch_size, verbose=verbose, 
