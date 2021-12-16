@@ -86,6 +86,7 @@ def get_data():
 
     if len(d_list) != len(features.columns):
         print(f'Error: d_list should have length {len(features.columns)} and has length {len(d_list)}')
+
     for feature, d in zip(features.columns, d_list):
         features_stationary[feature] = fast_fracdiff(features[feature], d)
 

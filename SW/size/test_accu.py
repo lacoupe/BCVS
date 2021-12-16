@@ -67,7 +67,7 @@ def test_model():
 
     verbose = 2
     
-    model_name = 'LSTM'
+    model_name = 'MLP'
     siamese = False
 
     dim1, dim2 = X.size(1), X.size(2)
@@ -86,6 +86,7 @@ def test_model():
 
     model.to(device)
     print(f"Number of {model.__class__.__name__}'s parameters : {count_parameters(model)}")
+    print('number of feature :', dim2, 'lookback period :', dim1)
 
     if siamese:
         train_siamese(model, X_train, X_train_reg, y_train, y_train_reg=y_train_reg, nb_epochs=nb_epochs, device=device, X_test=X_test, y_test=y_test, batch_size=batch_size, eta=eta, 
