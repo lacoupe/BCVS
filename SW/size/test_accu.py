@@ -58,7 +58,7 @@ def test_model():
 
     eta = 1e-3
     weight_decay = 1e-4
-    dropout = 0.1
+    dropout = 0.2
     batch_size = 30
     gamma = 0.3
     print(f'parameters of ML model : \nlearning_rate = {eta}, weight_decay = {weight_decay}, dropout = {dropout}, batch_size = {batch_size}, gamma = {gamma}')
