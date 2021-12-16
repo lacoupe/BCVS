@@ -63,11 +63,11 @@ def test_model():
     gamma = 0.3
     print(f'parameters of ML model : \nlearning_rate = {eta}, weight_decay = {weight_decay}, dropout = {dropout}, batch_size = {batch_size}, gamma = {gamma}')
 
-    nb_epochs = 40
+    nb_epochs = 80
 
     verbose = 2
     
-    model_name = 'MLP'
+    model_name = 'LSTM'
     siamese = False
 
     dim1, dim2 = X.size(1), X.size(2)
