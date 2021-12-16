@@ -116,7 +116,7 @@ def run_backtest():
 
     # models_list = ['MLP', 'ConvNet', 'LSTM']
     # models_list = ['MLP', 'ConvNet']
-    models_list = ['MLP']
+    models_list = ['ConvNet']
     df_pred_dict = {}
     df_prob_dict = {}
 
@@ -149,10 +149,10 @@ def run_backtest():
     df_prob_dict['Ensemble'] /= len(models_list)
     df_pred_dict['Ensemble'] = prob_to_pred(df_prob_dict[model_name], threshold)
 
-    df_resume = resume_backtest(df_pred_dict, bench_price, price)
+    df_resume = resume_backtest(df_pred_dict, bench_price, target_prices)
     print(df_resume)
 
-    daily_returns = price.pct_change().shift(1)
+    daily_returns = target_prices.pct_change().shift(1)
     perf_bench = price_to_perf(bench_price.loc[df_pred_dict['Ensemble'].index[0]:df_pred_dict['Ensemble'].index[-1]], log=False)
     performance_plot(df_pred_dict, daily_returns, bench_price, log=True)
     annual_alpha_plot(perf_bench, df_pred_dict['Ensemble'], daily_returns)
