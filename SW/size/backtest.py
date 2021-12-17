@@ -37,11 +37,10 @@ def backtest_strat(features, target_prices, model_name='MLP',
     for i, end_date in enumerate(tqdm(all_end_dates)):
 
         start_date = next_friday(end_date - relativedelta(years=training_window))
-        start_date_input = features.loc[:start_date].iloc[-input_period:].index[0]
+        # start_date_input = features.loc[:start_date].iloc[-input_period:].index[0]
 
-        df_input = features.loc[start_date_input:end_date]
+        df_input = features.loc[:end_date]
         df_output = best_pred.loc[start_date:end_date]
-        print(len(df_output))
 
         X = []
         for idx in df_output.index:
@@ -52,20 +51,35 @@ def backtest_strat(features, target_prices, model_name='MLP',
         X = np.array(X)
         y = df_output.values
         
-        if i == 0:
-            first_start_date_test = end_date - relativedelta(weeks=25)
-        
-        start_date_test = end_date - relativedelta(weeks=25)
+        start_date_test = next_friday(end_date - relativedelta(weeks=26))
+
         # Make sur the first test date is a friday
-        delta_days = 4 - start_date_test.weekday()
-        if delta_days < 0:
-            delta_days += 7
-        start_date_test = start_date_test + relativedelta(days=delta_days)
-        split_index = df_output.index.get_loc(start_date_test)  
+        # delta_days = 4 - start_date_test.weekday()
+        # if delta_days < 0:
+        #     delta_days += 7
+        # start_date_test = start_date_test + relativedelta(days=delta_days)
+
+        split_index = df_output.index.get_loc(start_date_test) + 1
+
+        # print(start_date_input)
+        # print(start_date)
+        # print(start_date_test)
+        # print(df_output[start_date_test : end_date])
         
+        # print(start_date_test)
+        # print(end_date)
+
+        if i == 0:
+            first_start_date_test = start_date_test
+            test_index = df_output[start_date_test : end_date].iloc[1:].index
+        test_index = test_index.union(df_output[start_date_test : end_date].iloc[1:].index)
+
         # Create train and test set
         X_train, y_train = X[:split_index], y[:split_index]
         X_test, y_test = X[split_index:], y[split_index:]
+
+        # print(len(df_output[start_date_test : end_date].iloc[1:]))
+        # print(len(y_test))
         
         # Transform Numpy arrays to Torch tensors
         X_train, y_train, X_test, y_test = torch.from_numpy(X_train).float(), torch.from_numpy(y_train).float(), torch.from_numpy(X_test).float(), torch.from_numpy(y_test).float()
@@ -103,14 +117,18 @@ def backtest_strat(features, target_prices, model_name='MLP',
 
         # Get predictions
         prob = test(model, X_test)
-        print(len(prob))
-        print(len(y_test))
+        # print(len(prob))
+        # print(len(y_test))
         prob_output.append(prob)
 
+    # print(test_index)
+    # print(best_pred[first_start_date_test:end_date].index)
+    # print(all(test_index == best_pred[first_start_date_test:end_date].iloc[1:].index))
+
     prob_output = np.array(prob_output).reshape(len(all_end_dates) * X_test.size(0), y_test.size(1))
-    df_prob = pd.DataFrame(index=best_pred[first_start_date_test:end_date].index, data=prob_output, columns=best_pred.columns)
-    
-    return df_prob
+    df_prob = pd.DataFrame(index=best_pred[first_start_date_test:end_date].iloc[1:].index, data=prob_output, columns=best_pred.columns)
+
+    return df_prob.resample('W-FRI').last()
 
 def run_backtest():
 
@@ -124,11 +142,11 @@ def run_backtest():
     df_pred_dict = {}
     df_prob_dict = {}
 
-    threshold = 0.8
+    threshold = 0.6
     batch_size = 5
     verbose = 0
     training_window = 5
-    nb_epochs = 0
+    nb_epochs = 2
     input_period_days = 42
     input_period_reg = 8
     eta = 1e-3

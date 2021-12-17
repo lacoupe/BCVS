@@ -105,8 +105,8 @@ def next_friday(date):
     delta_days = 4 - date.weekday()
     if delta_days < 0:
         delta_days += 7
-    last_friday = date + relativedelta(days=delta_days)
-    return last_friday
+    next_friday = date + relativedelta(days=delta_days)
+    return next_friday
 
 
 def performance_plot(df_pred_dict, daily_returns, bench_price, log=True):

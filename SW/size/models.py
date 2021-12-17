@@ -24,7 +24,7 @@ class MLP(nn.Module):
         x = self.relu(self.drop(self.fc3(x)))
         x = self.softmax(self.fc4(x))       
 
-        return x, None
+        return x
 
     
 class ConvNet(nn.Module):
@@ -59,7 +59,7 @@ class ConvNet(nn.Module):
         x = self.relu(self.drop(self.fc1(x)))
         x = self.softmax(self.fc2(x))
 
-        return x, None
+        return x
     
     
 class LSTM(nn.Module):
@@ -87,7 +87,7 @@ class LSTM(nn.Module):
         x, _ = self.lstm(x, (h0.detach(), c0.detach()))
         x = self.softmax(self.fc(x[:, -1, :]))
 
-        return x, None
+        return x
 
 
 class SiameseLSTM(nn.Module):

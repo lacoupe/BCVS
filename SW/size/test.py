@@ -53,7 +53,7 @@ def strat(features, target_prices, model_name='MLP', nb_epochs=50,
     X = X.sub_(mean).div_(std)
 
     model.eval()
-    out, _= model(X)
+    out = model(X)
 
     return pd.DataFrame(index=[model_name], columns=target_prices.columns, data=out.cpu().detach().numpy())
 

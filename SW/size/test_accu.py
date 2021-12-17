@@ -1,7 +1,5 @@
-from numpy.lib.twodim_base import triu_indices
-from torch.utils.data.dataset import random_split
 from data import get_data, get_processed_data
-from train_test import train, output_to_loss, output_to_accu, test, train_siamese, output_to_accu_siamese
+from train_test import train, output_to_accu, train_siamese, output_to_accu_siamese
 from helpers import plot_cm, count_parameters, plot_cm_siamese
 from models import MLP, ConvNet, LSTM, SiameseLSTM
 from sklearn.model_selection import train_test_split
@@ -63,7 +61,7 @@ def test_model():
     gamma = 0.3
     print(f'parameters of ML model : \nlearning_rate = {eta}, weight_decay = {weight_decay}, dropout = {dropout}, batch_size = {batch_size}, gamma = {gamma}')
 
-    nb_epochs = 80
+    nb_epochs = 10
 
     verbose = 2
     

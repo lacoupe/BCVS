@@ -54,7 +54,7 @@ def tune_model():
     batch_sizes = [20, 40]
 
     # Fixed ML parameters
-    nb_epochs = 40
+    nb_epochs = 2
 
     dim1, dim2 = X.size(1), X.size(2)
 
@@ -63,8 +63,8 @@ def tune_model():
         for lr in tqdm(learning_rates, leave=False, position=1):
             for w in tqdm(weight_decays, leave=False, position=2):
                 for drop in tqdm(dropouts, leave=False, position=3):
-                    model = LSTM(input_size=dim2, output_size=y.size(1), device=device, pdrop=drop).to(device)
-                    # model = ConvNet(dim1, dim2, pdrop=drop)
+                    # model = LSTM(input_size=dim2, output_size=y.size(1), device=device, pdrop=drop).to(device)
+                    model = ConvNet(dim1, dim2, pdrop=drop)
                     train(model, X_train, y_train, nb_epochs, device=device, batch_size=b, eta=lr, weight_decay=w, verbose=0)
                     tuning_list.append([lr, w, drop, nb_epochs, b, 
                                         np.round(output_to_loss(model, X_test, y_test).item(), 2), 

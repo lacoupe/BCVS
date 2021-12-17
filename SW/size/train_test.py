@@ -10,8 +10,8 @@ import torch.nn.functional as F
 np.set_printoptions(precision=3, suppress=True)
 
 
-def linear_combination(x, y, epsilon): 
-    return epsilon * x + (1 - epsilon) * y
+# def linear_combination(x, y, epsilon): 
+#     return epsilon * x + (1 - epsilon) * y
 
 
 # def reduce_loss(loss, reduction='mean'):
@@ -31,41 +31,41 @@ def linear_combination(x, y, epsilon):
 #         nll = F.nll_loss(log_preds, target, reduction=self.reduction)
 #         return linear_combination(loss/n, nll, self.epsilon)
 
-class LabelSmoothingLoss(nn.Module):
-    """
-    With label smoothing,
-    KL-divergence between q_{smoothed ground truth prob.}(w)
-    and p_{prob. computed by model}(w) is minimized.
-    """
-    def __init__(self, label_smoothing, tgt_vocab_size, ignore_index=-100):
-        assert 0.0 < label_smoothing <= 1.0
-        self.ignore_index = ignore_index
-        super(LabelSmoothingLoss, self).__init__()
+# class LabelSmoothingLoss(nn.Module):
+#     """
+#     With label smoothing,
+#     KL-divergence between q_{smoothed ground truth prob.}(w)
+#     and p_{prob. computed by model}(w) is minimized.
+#     """
+#     def __init__(self, label_smoothing, tgt_vocab_size, ignore_index=-100):
+#         assert 0.0 < label_smoothing <= 1.0
+#         self.ignore_index = ignore_index
+#         super(LabelSmoothingLoss, self).__init__()
 
-        smoothing_value = label_smoothing / (tgt_vocab_size - 2)
-        one_hot = torch.full((tgt_vocab_size,), smoothing_value)
-        one_hot[self.ignore_index] = 0
-        self.register_buffer('one_hot', one_hot.unsqueeze(0))
+#         smoothing_value = label_smoothing / (tgt_vocab_size - 2)
+#         one_hot = torch.full((tgt_vocab_size,), smoothing_value)
+#         one_hot[self.ignore_index] = 0
+#         self.register_buffer('one_hot', one_hot.unsqueeze(0))
 
-        self.confidence = 1.0 - label_smoothing
+#         self.confidence = 1.0 - label_smoothing
 
-    def forward(self, output, target):
-        """
-        output (FloatTensor): batch_size x n_classes
-        target (LongTensor): batch_size
-        """
-        model_prob = self.one_hot.repeat(target.size(0), 1)
-        model_prob.scatter_(1, target.unsqueeze(1), self.confidence)
-        model_prob.masked_fill_((target == self.ignore_index).unsqueeze(1), 0)
+#     def forward(self, output, target):
+#         """
+#         output (FloatTensor): batch_size x n_classes
+#         target (LongTensor): batch_size
+#         """
+#         model_prob = self.one_hot.repeat(target.size(0), 1)
+#         model_prob.scatter_(1, target.unsqueeze(1), self.confidence)
+#         model_prob.masked_fill_((target == self.ignore_index).unsqueeze(1), 0)
 
-        return F.kl_div(output, model_prob, reduction='sum')
+#         return F.kl_div(output, model_prob, reduction='sum')
 
 
 def output_to_accu(model, X, y):
     model.eval()
     nb_errors = 0
     for b in range(0, X.size(0)):
-        output, _ = model(X.narrow(0, b, 1))
+        output = model(X.narrow(0, b, 1))
         _, predicted_classes = output.max(1)
         for k in range(1):
             if predicted_classes[k] != y.max(1)[1][b]:
@@ -92,7 +92,7 @@ def output_to_loss(model, X, y):
     loss = 0
     criterion = nn.BCELoss()
     for b in range(0, X.size(0)):
-        output, _ = model(X.narrow(0, b, 1))
+        output = model(X.narrow(0, b, 1))
         loss += criterion(output, y.narrow(0, b, 1))
     return (loss / X.size(0)).cpu()
 
@@ -122,7 +122,7 @@ def train(model, X_train, y_train, nb_epochs, device, X_test=None, y_test=None, 
         model.train()
         for train_input, train_target in train_loader:
             optimizer.zero_grad()
-            output, _ = model(train_input)
+            output = model(train_input)
             loss = criterion(output, train_target)
 
             loss = (loss * weights).mean()
@@ -254,13 +254,9 @@ def train_siamese(model, X_train, X_train_reg, y_train, y_train_reg, nb_epochs, 
 
 
 def test(model, X_test):
-    
     prob = []
     model.eval()
-    for k in range(0, X_test.size(0)):
-        output, _ = model(X_test.narrow(0, k, 1))
-        prob.append(output.cpu().detach().numpy())
-
+    prob = model(X_test).cpu().detach().numpy()
     return np.array(prob)
 
 
