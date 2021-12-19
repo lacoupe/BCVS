@@ -19,7 +19,7 @@ def test_model():
     # Process data
     X, X_reg, y, y_reg = get_processed_data(features, target_prices, input_period, input_period_reg, training_window)
 
-    train_indices, test_indices, _, _ = train_test_split(range(len(y)), y, test_size=0.2, shuffle=False, random_state=1)
+    train_indices, test_indices, _, _ = train_test_split(range(len(y)), y, test_size=0.1, shuffle=False, random_state=1)
     X_train, X_train_reg, y_train, y_train_reg, X_test, X_test_reg, y_test = X[train_indices], X_reg[train_indices], y[train_indices], y_reg[train_indices], X[test_indices], X_reg[test_indices], y[test_indices]
     print('Number of train sample', len(X_train))
     print('Number of test sample', len(X_test))
@@ -56,12 +56,12 @@ def test_model():
 
     eta = 1e-3
     weight_decay = 1e-4
-    dropout = 0.2
+    dropout = 0.1
     batch_size = 30
     gamma = 0.3
     print(f'parameters of ML model : \nlearning_rate = {eta}, weight_decay = {weight_decay}, dropout = {dropout}, batch_size = {batch_size}, gamma = {gamma}')
 
-    nb_epochs = 10
+    nb_epochs = 100
 
     verbose = 2
     
