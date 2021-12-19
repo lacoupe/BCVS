@@ -82,7 +82,8 @@ def get_data():
     features = data[data.columns[1:]].fillna('ffill').shift(1).dropna()
 
     features_stationary = pd.DataFrame().reindex_like(features)
-    d_list = [0.2, 0.2, 0.2, 0.2, 0.2, 0.2, 0.2, 0.2, 0.2, 0., 0., 0., 0.1, 0., 0.3, 0.2, 0.2, 0.2, 0.2, 0.2, 0.2, 0.2]
+    d_list = [0.5, 0.5, 0.5, 0.4, 0.2, 0.4, 0.4, 0.4, 0.4, 0., 0., 0., 0.5, 0.4, 0.8, 0.7, 0.6, 0.5, 0.4, 0.2, 0.6, 0.5]
+    # d_list = np.ones(len(features.columns))
 
 
     if len(d_list) != len(features.columns):
