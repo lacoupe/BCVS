@@ -5,7 +5,7 @@ import pandas as pd
 from dateutil.relativedelta import relativedelta
 import calendar
 import os
-from train_test import test, test_siamese
+# from train_test import test, test_siamese
 from sklearn.metrics import ConfusionMatrixDisplay
 
 
@@ -15,7 +15,7 @@ def count_parameters(model):
 
 def plot_cm(model, X_test, y_test, price):
     model.eval()
-    output = test(model, X_test)
+    output = model(X_test).cpu().detach().numpy()
     df_prob = pd.DataFrame(data=output.reshape(len(output), 2))
     df_pred = prob_to_pred_2(df_prob)
 
@@ -30,22 +30,22 @@ def plot_cm(model, X_test, y_test, price):
     plt.savefig(plot_path)
     plt.show()
 
-def plot_cm_siamese(model, X_test, X_test_reg, y_test, price):
-    model.eval()
-    output = test_siamese(model, X_test, X_test_reg)
-    df_prob = pd.DataFrame(data=output.reshape(len(output), 2))
-    df_pred = prob_to_pred_2(df_prob)
+# def plot_cm_siamese(model, X_test, X_test_reg, y_test, price):
+#     model.eval()
+#     output = test_siamese(model, X_test, X_test_reg)
+#     df_prob = pd.DataFrame(data=output.reshape(len(output), 2))
+#     df_pred = prob_to_pred_2(df_prob)
 
-    ConfusionMatrixDisplay.from_predictions(y_test.cpu().detach().numpy().argmax(axis=1), 
-                                            df_pred.values.argmax(axis=1), 
-                                            display_labels=list(price.columns),
-                                            cmap='Blues', colorbar=False
-                                            )
+#     ConfusionMatrixDisplay.from_predictions(y_test.cpu().detach().numpy().argmax(axis=1), 
+#                                             df_pred.values.argmax(axis=1), 
+#                                             display_labels=list(price.columns),
+#                                             cmap='Blues', colorbar=False
+#                                             )
 
-    plot_path = os.path.join(os.path.dirname(__file__)) + '/plots/confusion_matrix_' + model.__class__.__name__ + '.png'
-    plt.title('Confusion Matrix ' + model.__class__.__name__ )
-    plt.savefig(plot_path)
-    plt.show()
+#     plot_path = os.path.join(os.path.dirname(__file__)) + '/plots/confusion_matrix_' + model.__class__.__name__ + '.png'
+#     plt.title('Confusion Matrix ' + model.__class__.__name__ )
+#     plt.savefig(plot_path)
+#     plt.show()
 
 def prob_to_pred(df_prob, threshold):
     df_pred = pd.DataFrame().reindex_like(df_prob).fillna(0)

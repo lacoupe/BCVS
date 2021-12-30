@@ -12,26 +12,12 @@ np.set_printoptions(precision=3, suppress=True)
 
 def output_to_accu(model, X, y):
     model.eval()
+    prob = test(model, X)
+    pred = (prob >= 0.5).astype(int)
     nb_errors = 0
     for b in range(0, X.size(0)):
-        output = model(X.narrow(0, b, 1))
-        _, predicted_classes = output.max(1)
-        for k in range(1):
-            if predicted_classes[k] != y.max(1)[1][b]:
-                nb_errors = nb_errors + 1
-    accuracy = 100 * (1 - nb_errors / X.size(0))
-    return accuracy
-
-
-def output_to_accu_siamese(model, X, X_reg, y):
-    model.eval()
-    nb_errors = 0
-    for b in range(0, X.size(0)):
-        output, _ = model(X.narrow(0, b, 1), X_reg.narrow(0, b, 1))
-        _, predicted_classes = output.max(1)
-        for k in range(1):
-            if predicted_classes[k] != y.max(1)[1][b]:
-                nb_errors = nb_errors + 1
+        if pred[b] != y[b]:
+            nb_errors = nb_errors + 1
     accuracy = 100 * (1 - nb_errors / X.size(0))
     return accuracy
 
@@ -42,15 +28,22 @@ def output_to_loss(model, X, y):
     criterion = nn.BCELoss()
     for b in range(0, X.size(0)):
         output = model(X.narrow(0, b, 1))
-        loss += criterion(output, y.narrow(0, b, 1))
+        loss += criterion(output, y[b])
     return (loss / X.size(0)).cpu()
+
+
+def test(model, X_test):
+    model.eval()
+    prob = model(X_test).cpu().detach().numpy()
+    return prob
 
 
 def train(model, X_train, y_train, nb_epochs, X_test=None, y_test=None, i=None, eta=1e-3, weight_decay=0, batch_size=1, verbose=0):
     
     optimizer = torch.optim.Adam(model.parameters(), lr=eta, weight_decay=weight_decay)
 
-    criterion = nn.BCELoss(reduction='none')
+    criterion = nn.BCELoss()
+    # criterion = nn.CrossEntropyLoss()
 
     model.train()
     
@@ -63,9 +56,6 @@ def train(model, X_train, y_train, nb_epochs, X_test=None, y_test=None, i=None, 
     train_set = TensorDataset(X_train, y_train)    
     train_loader = DataLoader(train_set, batch_size=batch_size, shuffle=True, drop_last=True, num_workers=0)
 
-    class_count = np.unique(y_train.cpu(), axis=0, return_counts=True)[1]
-    weights = torch.tensor(class_count / sum(class_count))
-
     for e in (tqdm(range(nb_epochs)) if (verbose == 3) else range(nb_epochs)):
         acc_loss = 0
         model.train()
@@ -73,10 +63,8 @@ def train(model, X_train, y_train, nb_epochs, X_test=None, y_test=None, i=None, 
             optimizer.zero_grad()
             output = model(train_input)
             loss = criterion(output, train_target)
-
-            loss = (loss * weights).mean()
             loss.backward()
-            clip_grad_norm_(model.parameters(), 1)
+            # clip_grad_norm_(model.parameters(), 1)
             optimizer.step()
             
             if verbose in (2, 4):
@@ -113,10 +101,6 @@ def train(model, X_train, y_train, nb_epochs, X_test=None, y_test=None, i=None, 
         plt.show()
 
 
-def test(model, X_test):
-    prob = []
-    model.eval()
-    prob = model(X_test).cpu().detach().numpy()
-    return np.array(prob)
+
     
     

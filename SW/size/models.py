@@ -39,10 +39,10 @@ class ConvNet(nn.Module):
         self.pool = nn.MaxPool2d(kernel_size=2)
         
         self.fc1 = nn.Linear(10 * (dim1 - dim1_kernel1 - dim1_kernel2 + 2) * (dim2 - dim2_kernel1 - dim2_kernel2 + 2), 10)
-        self.fc2 = nn.Linear(10, 2)
+        self.fc2 = nn.Linear(10, 1)
         
         self.relu = nn.ReLU()
-        self.softmax = nn.Softmax(dim=1)
+        self.sigmoid = nn.Sigmoid()
 
         self.drop = nn.Dropout(pdrop)
         self.drop2d = nn.Dropout2d(pdrop)
@@ -57,27 +57,26 @@ class ConvNet(nn.Module):
     
         x = x.flatten(start_dim=1)
         x = self.relu(self.drop(self.fc1(x)))
-        x = self.softmax(self.fc2(x))
+        x = self.sigmoid(self.fc2(x))
 
-        return x
+        return x.squeeze()
     
     
 class LSTM(nn.Module):
 
-    def __init__(self, input_size, output_size, device, hidden_size=50, num_layers=2, pdrop=0.1):
+    def __init__(self, input_size, device, hidden_size=50, num_layers=2, pdrop=0.1):
         super(LSTM, self).__init__()
         
         self.input_size = input_size
-        self.output_size = output_size
         self.hidden_size = hidden_size
         self.num_layers = num_layers
         self.dropout = pdrop
         self.device = device
         self.lstm = nn.LSTM(input_size=self.input_size, hidden_size=self.hidden_size, 
                             num_layers=self.num_layers, batch_first=True, dropout=self.dropout)
-        self.fc = nn.Linear(hidden_size, output_size)
+        self.fc = nn.Linear(hidden_size, 1)
 
-        self.softmax = nn.Softmax(dim=1)
+        self.sigmoid = nn.Sigmoid()
         self.relu = nn.ReLU()
         
     def forward(self, x):
@@ -85,9 +84,13 @@ class LSTM(nn.Module):
         c0 = torch.randn(self.num_layers, x.size(0), self.hidden_size).to(self.device)
         x = x.view(x.size(0), x.size(1), x.size(2))
         x, _ = self.lstm(x, (h0.detach(), c0.detach()))
-        x = self.softmax(self.fc(x[:, -1, :]))
+        x = self.sigmoid(self.fc(x[:, -1, :]))
 
-        return x
+        return x.squeeze()
+
+
+
+
 
 
 class SiameseLSTM(nn.Module):

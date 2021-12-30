@@ -6,55 +6,74 @@ import torch
 from dateutil.relativedelta import relativedelta
 
 
-def RSI(price, window):
-    price_diff = price.diff()
-    gain = price_diff.mask(price_diff < 0, 0.0)
-    loss = - price_diff.mask(price_diff > 0, -0.0)
-    avg_gain = gain.rolling(window=window).mean()
-    avg_loss = loss.rolling(window=window).mean()
-    rs = avg_gain / avg_loss
-    rsi = 1 - 1 / (1 + rs)
-    return rsi.fillna(0)
+# def RSI(price, window):
+#     price_diff = price.diff()
+#     gain = price_diff.mask(price_diff < 0, 0.0)
+#     loss = - price_diff.mask(price_diff > 0, -0.0)
+#     avg_gain = gain.rolling(window=window).mean()
+#     avg_loss = loss.rolling(window=window).mean()
+#     rs = avg_gain / avg_loss
+#     rsi = 1 - 1 / (1 + rs)
+#     return rsi.fillna(0)
 
 
 def get_data():
-    data_path = os.path.join(os.path.dirname(__file__)) + '/data/data.csv'
-    data = pd.read_csv(data_path, index_col=0, parse_dates=True)
+    
+    data_path = os.path.join(os.path.dirname(__file__)) + '/data/data.xlsx'
+    data = pd.read_excel(data_path, index_col=0, skiprows=[0, 1, 2, 3, 4, 5, 6, 8], sheet_name='features').fillna(method='ffill').shift(1).iloc[1:]
+    data = data.astype(float)
 
-    target_prices = data[['SMALL', 'LARGE']].fillna('ffill').shift(1).dropna()
-    bench_price = data['SPI'].fillna('ffill').shift(1).dropna()
-    features = data[data.columns[1:]].fillna('ffill').shift(1).dropna()
+    data['MATERIALS'] *= data['EURCHF']
+    data['CONSUMER STAPLE'] *= data['EURCHF']
+    data['INDUSTRIALS'] *= data['EURCHF']
+    data['CONSUMER DIS.'] *= data['EURCHF']
+    data['HEALTH CARE'] *= data['EURCHF']
+    data['FINANCIALS'] *= data['EURCHF']
 
-    change = features.diff()
-    change = change.add_suffix(' change')
+    data['GOLD'] *= data['USDCHF']
+    data['SILVER'] *= data['USDCHF']
+    data['BRENT'] *= data['USDCHF']
+    data['SP500'] *= data['USDCHF']
+    data['RUSSELL 2000'] *= data['USDCHF']
 
-    ma20 = np.log(features / features.rolling(window=20).mean())
-    ma20 = ma20.add_suffix(' ma20')
-    ma50 = np.log(features / features.rolling(window=50).mean())
-    ma50 = ma50.add_suffix(' ma50')
+    target_prices = data[['SMALL_MID', 'LARGE']]
 
-    vol21 = features.rolling(window=21).std()
-    vol21 = vol21.add_suffix(' vol21')
+    bench_price = data['SPI']
 
-    mom5 = features.rolling(5).apply(lambda x: np.log(x[-1] / x[0]) / len(x))
+    raw_features = data[data.columns.difference(['SPI', 'EURCHF', 'USDCHF'])]
+
+    raw_features = raw_features.drop(columns=['US 5YEAR', 'RUSSELL 2000', 'INDUSTRIALS'])
+
+    technical_features = raw_features[raw_features.columns.difference(['SURPRISE'])]
+
+    mom5 = technical_features.rolling(5).apply(lambda x: np.log(x[-1] / x[0]) / len(x))
     mom5 = mom5.add_suffix(' mom5')
-    mom10 = features.rolling(5).apply(lambda x: np.log(x[-1] / x[0]) / len(x))
-    mom10 = mom10.add_suffix(' mom10')
-    mom21 = features.rolling(21).apply(lambda x: np.log(x[-1] / x[0]) / len(x))
+
+    mom21 = technical_features.rolling(21).apply(lambda x: np.log(x[-1] / x[0]) / len(x))
     mom21 = mom21.add_suffix(' mom21')
 
-    RSI5 = RSI(features, 5)
-    RSI5 = RSI5.add_suffix(' RSI5')
+    mom63 = technical_features.rolling(63).apply(lambda x: np.log(x[-1] / x[0]) / len(x))
+    mom63 = mom63.add_suffix(' mom63')
 
-    RSI10 = RSI(features, 10)
-    RSI10 = RSI10.add_suffix(' RSI10')
-
-    ema_12 = features.ewm(span=12).mean()
-    ema_26 = features.ewm(span=26).mean()
-    MACD = ema_12 - ema_26
+    ema_12 = technical_features.ewm(span=12).mean()
+    ema_26 = technical_features.ewm(span=26).mean()
+    MACD = (ema_12 - ema_26) - (ema_12 - ema_26).ewm(span=9).mean()
     MACD = MACD.add_suffix(' MACD')
 
-    features = pd.concat([change, ma20, ma50, vol21, mom5, mom10, mom21, RSI5, RSI10, MACD], axis=1).dropna()
+    # raw_features['SURPRISE'] = fast_fracdiff(raw_features['SURPRISE'], 0.5)
+
+    features = pd.concat([mom5, mom21, mom63, MACD, raw_features['SURPRISE']], axis=1).ewm(5).mean().dropna()
+
+    features = features.drop(columns=['FINANCIALS mom5', 'GOLD mom5', 'HEALTH CARE mom5',  
+                                      'MATERIALS mom5',  'SILVER mom5',  'SMALL_MID mom5',  
+                                      'US 10YEAR mom5',  'CONSUMER STAPLE mom21',  'GOLD mom21',  
+                                      'SMALL_MID mom21',  'US 10YEAR mom21',  'US 2YEAR mom21',  
+                                      'CONSUMER STAPLE mom63',  'FINANCIALS mom63',  
+                                      'HEALTH CARE mom63',  'LARGE mom63',  'SILVER mom63',  
+                                      'SMALL_MID mom63',  'US 10YEAR mom63', 'US 2YEAR mom63',])
+
+    features = features.drop(columns=[ 'CONSUMER STAPLE mom5', 'LARGE mom5', 'CONSUMER DIS. mom21',  'SILVER mom21',  
+                                        'BRENT mom63', 'GOLD mom63',  'MATERIALS mom63',  'CONSUMER DIS. MACD', 'SILVER MACD'])
 
     return bench_price, target_prices, features
 
@@ -64,12 +83,13 @@ def get_processed_data(features, target_prices, training_window):
     last_date_train = last_friday(target_prices.index[-5])
 
     forward_weekly_returns = target_prices.rolling(5).apply(lambda x: np.log(x[-1] / x[0]) / len(x)).shift(-5)
-    best_pred = forward_weekly_returns.rank(axis=1).replace({1: 0., 2: 1.})
+
+    best_pred = (forward_weekly_returns.SMALL_MID > forward_weekly_returns.LARGE).astype(int)
 
     start_date = last_friday(last_date_train - relativedelta(years=training_window))
-    df_output = best_pred.loc[start_date:].dropna()
 
-    df_input = features.loc[start_date:df_output.index[-1]]
+    df_output = best_pred.loc[start_date:last_date_train]
+    df_input = features.reindex(df_output.index)
 
     X = df_input.values
     y = df_output.values

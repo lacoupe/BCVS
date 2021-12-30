@@ -74,30 +74,62 @@ def fast_fracdiff(x, d):
 
 
 def get_data():
-    data_path = os.path.join(os.path.dirname(__file__)) + '/data/data.csv'
-    data = pd.read_csv(data_path, index_col=0, parse_dates=True)
+    data_path = os.path.join(os.path.dirname(__file__)) + '/data/data.xlsx'
 
-    target_prices = data[['SMALL', 'LARGE']].fillna('ffill').shift(1).dropna()
-    bench_price = data['SPI'].fillna('ffill').shift(1).dropna()
-    features = data[data.columns[1:]].fillna('ffill').shift(1).dropna()
+    data = pd.read_excel(data_path, index_col=0, skiprows=[0, 1, 2, 3, 4, 5, 6, 8], sheet_name='features').fillna('ffill').shift(1).iloc[1:]
 
-    features_stationary = pd.DataFrame().reindex_like(features)
-    d_list = [0.5, 0.5, 0.4, 0.2, 0.2, 0.3, 0.3, 0.3, 0.2, 0., 0., 0., 0.3, 0.1, 0.5, 0.3, 0.3, 0.3, 0.4, 0.4, 0.5, 0.4]
+    data['MATERIALS EU'] *= data['EURCHF']
+    data['CONSUMER STAPLE EU'] *= data['EURCHF']
+    data['INDUSTRIALS EU'] *= data['EURCHF']
+    data['CONSUMER DIS. EU'] *= data['EURCHF']
+    data['HEALTH CARE EU'] *= data['EURCHF']
+    data['FINANCIALS EU'] *= data['EURCHF']
+    data['GOLD'] *= data['USDCHF']
+    data['SILVER'] *= data['USDCHF']
+    data['BRENT'] *= data['USDCHF']
+    data['SP500'] *= data['USDCHF']
+    data['RUSSELL 2000'] *= data['USDCHF']
 
-    # d_list = np.ones(len(features.columns))
+    target_prices = pd.read_excel('data/data.xlsx', index_col=0, skiprows=[0, 1, 2, 3, 4, 5, 6, 8], sheet_name='target').fillna('ffill').shift(1).iloc[1:]
+
+    bench_price = data['SPI']
+    raw_features = data[data.columns.difference(['SPI', 'EURCHF', 'USDCHF'])]
+
+    ma21 = np.log(raw_features[raw_features.columns[:-1]] / raw_features[raw_features.columns[:-1]].rolling(window=21).mean())
+    ma21 = ma21.add_suffix(' ma21')
+
+    ma50 = np.log(raw_features[raw_features.columns[:-1]] / raw_features[raw_features.columns[:-1]].rolling(window=50).mean())
+    ma50 = ma50.add_suffix(' ma50')
+
+    mom5 = raw_features[raw_features.columns[:-1]].rolling(5).apply(lambda x: np.log(x[-1] / x[0]) / len(x))
+    mom5 = mom5.add_suffix(' mom5')
+
+    mom21 = raw_features[raw_features.columns[:-1]].rolling(21).apply(lambda x: np.log(x[-1] / x[0]) / len(x))
+    mom21 = mom21.add_suffix(' mom21')
+
+    ema_12 = raw_features[raw_features.columns[:-1]].ewm(span=12).mean()
+    ema_26 = raw_features[raw_features.columns[:-1]].ewm(span=26).mean()
+    MACD = (ema_12 - ema_26) - (ema_12 - ema_26).ewm(span=9).mean()
+    MACD = MACD.add_suffix(' MACD')
+
+    features = pd.concat([ma21, ma50, mom5, mom21, MACD, raw_features['SURPRISE']], axis=1).ewm(5).mean().dropna()
+
+    # features_stationary = pd.DataFrame().reindex_like(features)
+    # d_list = [0.5, 0.5, 0.4, 0.2, 0.2, 0.3, 0.3, 0.3, 0.2, 0., 0., 0., 0.3, 0.1, 0.5, 0.3, 0.3, 0.3, 0.4, 0.4, 0.5, 0.4]
+
+    # # d_list = np.ones(len(features.columns))
 
 
-    if len(d_list) != len(features.columns):
-        print(f'Error: d_list should have length {len(features.columns)} and has length {len(d_list)}')
+    # if len(d_list) != len(features.columns):
+    #     print(f'Error: d_list should have length {len(features.columns)} and has length {len(d_list)}')
 
-    for feature, d in zip(features.columns, d_list):
-        features_stationary[feature] = fast_fracdiff(features[feature], d)
+    # for feature, d in zip(features.columns, d_list):
+    #     features_stationary[feature] = fast_fracdiff(features[feature], d)
 
-    return bench_price, target_prices, features, features_stationary
+    return bench_price, target_prices, raw_features, features
 
 
-def get_processed_data(features, target_prices, input_period, input_period_reg, training_window):
-
+def get_processed_data(features, target_prices, input_period, training_window):
 
     last_date_train = last_friday(target_prices.index[-input_period])
     
@@ -107,34 +139,35 @@ def get_processed_data(features, target_prices, input_period, input_period_reg, 
 
     forward_weekly_returns = target_prices.rolling(5).apply(lambda x: np.log(x[-1] / x[0]) / len(x)).shift(-5)
 
-    best_pred = forward_weekly_returns.rank(axis=1).replace({1: 0., 2: 1.})
+    best_pred = (forward_weekly_returns.LARGE > forward_weekly_returns.SMALL_MID).astype(int)
+    # best_pred = forward_weekly_returns.rank(axis=1).replace({1: 0., 2: 1.})
 
     start_date = last_friday(last_date_train - relativedelta(years=training_window))
 
     df_output = best_pred.loc[start_date:].dropna()
-    df_output_reg = forward_weekly_returns.shift(-1).loc[start_date:].dropna()
+    # df_output_reg = forward_weekly_returns.shift(-1).loc[start_date:].dropna()
 
     start_date_input = target_prices.loc[:start_date].iloc[-252:].index[0]
     
     df_input = features.loc[start_date_input:df_output.index[-1]]
-    df_input_reg = target_prices.rolling(5).apply(lambda x: np.log(x[-1] / x[0]) / len(x)).loc[start_date_input:df_output.index[-1]]
+    # df_input_reg = target_prices.rolling(5).apply(lambda x: np.log(x[-1] / x[0]) / len(x)).loc[start_date_input:df_output.index[-1]]
 
     X = []
-    X_reg = []
+    # X_reg = []
     for idx in df_output.index:
 
         df_input_period = df_input.loc[:idx].iloc[-input_period:]
-        df_input_period_reg = df_input_reg.loc[:idx].iloc[-input_period_reg:]
+        # df_input_period_reg = df_input_reg.loc[:idx].iloc[-input_period_reg:]
         X_period = df_input_period.values.reshape(input_period, num_features)
-        X_period_reg = df_input_period_reg.values
+        # X_period_reg = df_input_period_reg.values
         X.append(X_period)
-        X_reg.append(X_period_reg)
+        # X_reg.append(X_period_reg)
 
     X = np.array(X)
-    X_reg = np.array(X_reg)
+    # X_reg = np.array(X_reg)
     y = df_output.values
-    y_reg = df_output_reg.values
+    # y_reg = df_output_reg.values
 
-    X, X_returns, y, y_reg = torch.from_numpy(X).float(), torch.from_numpy(X_reg).float(), torch.from_numpy(y).float(), torch.from_numpy(y_reg).float()
+    X, y = torch.from_numpy(X).float(), torch.from_numpy(y).float()
 
-    return X, X_returns, y, y_reg
+    return X, y

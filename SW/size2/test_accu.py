@@ -12,13 +12,14 @@ def test_model():
     _, target_prices, features = get_data()
 
     training_window = 10
-    X, y, = get_processed_data(features, target_prices, training_window)
+    X, y = get_processed_data(features, target_prices, training_window)
+
+    # print(X[265:280])
 
     train_indices, test_indices, _, _ = train_test_split(range(len(y)), y, test_size=0.2, shuffle=False, random_state=1)
     X_train, y_train, X_test, y_test = X[train_indices], y[train_indices], X[test_indices], y[test_indices]
     print('Number of train sample', len(X_train))
     print('Number of test sample', len(X_test))
-
     X_mean = X_train.mean(dim=[0], keepdim=True)
     X_std = X_train.std(dim=[0], keepdim=True)
     X_train = X_train.sub_(X_mean).div_(X_std)
@@ -34,10 +35,10 @@ def test_model():
     eta = 1e-3
     weight_decay = 1e-4
     dropout = 0.1
-    batch_size = 30
+    batch_size = 20
     print(f'parameters of ML model : \nlearning_rate = {eta}, weight_decay = {weight_decay}, dropout = {dropout}, batch_size = {batch_size}')
 
-    nb_epochs = 100
+    nb_epochs = 30
 
     verbose = 2
 
