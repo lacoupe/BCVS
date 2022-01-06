@@ -5,23 +5,29 @@ import pandas as pd
 from dateutil.relativedelta import relativedelta
 import calendar
 import os
-# from train_test import test, test_siamese
+from train_test import test
 from sklearn.metrics import ConfusionMatrixDisplay
+from sklearn.metrics import accuracy_score, confusion_matrix, f1_score, recall_score, precision_score
 
+def printmetrics(y_test, pred):
+    
+    cmat= confusion_matrix(y_test, pred)
+    accuracy = round(accuracy_score(y_test, pred),4)
+    print(cmat)
+    print(f"Accuracy           : {100 * accuracy:.2f} %")
 
 def count_parameters(model): 
     return sum(p.numel() for p in model.parameters() if p.requires_grad)
 
-
-def plot_cm(model, X_test, y_test, price):
+def plot_cm(model, X_test, y_test, target_prices):
     model.eval()
-    output = model(X_test).cpu().detach().numpy()
-    df_prob = pd.DataFrame(data=output.reshape(len(output), 2))
+    output = test(model, X_test)
+    df_prob = pd.DataFrame(data=output.reshape(len(output), 1))
     df_pred = prob_to_pred_2(df_prob)
 
     ConfusionMatrixDisplay.from_predictions(y_test.cpu().detach().numpy().argmax(axis=1), 
                                             df_pred.values.argmax(axis=1), 
-                                            display_labels=list(price.columns),
+                                            display_labels=list(target_prices.columns),
                                             cmap='Blues', colorbar=False
                                             )
 
@@ -30,22 +36,6 @@ def plot_cm(model, X_test, y_test, price):
     plt.savefig(plot_path)
     plt.show()
 
-# def plot_cm_siamese(model, X_test, X_test_reg, y_test, price):
-#     model.eval()
-#     output = test_siamese(model, X_test, X_test_reg)
-#     df_prob = pd.DataFrame(data=output.reshape(len(output), 2))
-#     df_pred = prob_to_pred_2(df_prob)
-
-#     ConfusionMatrixDisplay.from_predictions(y_test.cpu().detach().numpy().argmax(axis=1), 
-#                                             df_pred.values.argmax(axis=1), 
-#                                             display_labels=list(price.columns),
-#                                             cmap='Blues', colorbar=False
-#                                             )
-
-#     plot_path = os.path.join(os.path.dirname(__file__)) + '/plots/confusion_matrix_' + model.__class__.__name__ + '.png'
-#     plt.title('Confusion Matrix ' + model.__class__.__name__ )
-#     plt.savefig(plot_path)
-#     plt.show()
 
 def prob_to_pred(df_prob, threshold):
     df_pred = pd.DataFrame().reindex_like(df_prob).fillna(0)
@@ -108,7 +98,6 @@ def next_friday(date):
     next_friday = date + relativedelta(days=delta_days)
     return next_friday
 
-
 def performance_plot(df_pred_dict, daily_returns, bench_price, log=True):
     tax = 0.0012
     perf_bench = price_to_perf(bench_price.loc[df_pred_dict['Ensemble'].index[0]:df_pred_dict['Ensemble'].index[-1]], log=log)
@@ -127,7 +116,6 @@ def performance_plot(df_pred_dict, daily_returns, bench_price, log=True):
 
 def turnover(df_pred):
     return (df_pred.diff().fillna(0) != 0).any(axis=1).astype(int).sum()
-
 
 
 def annual_alpha_plot(perf_bench, df_pred, daily_returns):
@@ -198,53 +186,51 @@ def price_to_perf(df, log=False):
     return perf
 
 
-def perf_to_stat(perf_gross, perf_net):
+# def perf_to_stat(perf_gross, perf_net):
 
-    average_year_return_gross = perf_gross.resample('Y').apply(lambda x: (x[-1] - x[0]) / x[0]).mean() * 100
-    average_year_return_net = perf_net.resample('Y').apply(lambda x: (x[-1] - x[0]) / x[0]).mean() * 100
+#     average_year_return_gross = perf_gross.resample('Y').apply(lambda x: (x[-1] - x[0]) / x[0]).mean() * 100
+#     average_year_return_net = perf_net.resample('Y').apply(lambda x: (x[-1] - x[0]) / x[0]).mean() * 100
 
-    average_year_std = perf_gross.pct_change().std() * np.sqrt(256) * 100
-    average_year_sharpe = average_year_return_net / average_year_std
+#     average_year_std = perf_gross.pct_change().std() * np.sqrt(256) * 100
+#     average_year_sharpe = average_year_return_net / average_year_std
     
-    dd_window = 252
-    roll_max = perf_gross.rolling(dd_window).max()
-    daily_dd = perf_gross / roll_max - 1
-    max_daily_dd = np.abs(daily_dd.rolling(dd_window, min_periods=1).min()).max() * 100
+#     dd_window = 252
+#     roll_max = perf_gross.rolling(dd_window).max()
+#     daily_dd = perf_gross / roll_max - 1
+#     max_daily_dd = np.abs(daily_dd.rolling(dd_window, min_periods=1).min()).max() * 100
 
-    return [average_year_return_gross, average_year_return_net, average_year_std, average_year_sharpe, max_daily_dd]
+#     return [average_year_return_gross, average_year_return_net, average_year_std, average_year_sharpe, max_daily_dd]
 
 
-def perf_to_stat_2(df_pred, daily_returns, tax=0.0012):
+def perf_to_stat(df_pred, daily_returns, tax=0.0012):
 
     first_date = df_pred.index[0]
     last_date = df_pred.index[-1]
     daily_ret = daily_returns.loc[first_date:last_date]
     df_pred_daily = df_pred.reindex(daily_ret.index, method='ffill').shift(1)
-    df_daily_perf= (df_pred_daily * daily_ret).sum(axis=1)
+    df_daily_perf = (df_pred_daily * daily_ret).sum(axis=1)
     df_cost = (df_pred_daily.diff().fillna(0) != 0).any(axis=1).astype(int) * tax
-    perf_gross = (1 + df_daily_perf - df_cost).cumprod()
+    # cumul_perf = (1 + df_daily_perf - df_cost).cumprod()
+    cumul_perf = (1 + df_daily_perf).cumprod()
     
     average_year_return_gross = df_daily_perf.mean() * 252 * 100
-    average_year_return_net = (df_daily_perf - df_cost).mean() * 252 * 100
+    # average_year_return_net = (df_daily_perf - df_cost).mean() * 252 * 100
 
     average_year_std = df_daily_perf.std() * np.sqrt(256) * 100
-    average_year_sharpe = average_year_return_net / average_year_std
+    average_year_sharpe = average_year_return_gross / average_year_std
     
     dd_window = 252
-    roll_max = perf_gross.rolling(dd_window).max()
-    daily_dd = perf_gross / roll_max - 1
+    roll_max = cumul_perf.rolling(dd_window).max()
+    daily_dd = cumul_perf / roll_max - 1
     max_daily_dd = np.abs(daily_dd.rolling(dd_window, min_periods=1).min()).max() * 100
 
-    return [average_year_return_gross, average_year_return_net, average_year_std, average_year_sharpe, max_daily_dd]
+    return [average_year_return_gross, average_year_std, average_year_sharpe, max_daily_dd]
 
-def price_to_stats(price, df_pred=None):
+def price_to_stats(price, index):
 
-    if df_pred is not None:
-        first_date = df_pred.index[0]
-        last_date = df_pred.index[-1]
-        daily_ret = price.pct_change().shift(1).loc[first_date:last_date]
-    else:
-        daily_ret = price.pct_change().shift(1)
+    first_date = index[0]
+    last_date = index[-1]
+    daily_ret = price.pct_change().shift(1).loc[first_date:last_date]
     perf = (daily_ret + 1).cumprod()
 
     average_year_return_gross = daily_ret.mean() * 252 * 100
@@ -258,66 +244,27 @@ def price_to_stats(price, df_pred=None):
     daily_dd = perf / roll_max - 1
     max_daily_dd = np.abs(daily_dd.rolling(dd_window, min_periods=1).min()).max() * 100
 
-    return [average_year_return_gross, average_year_return_net, average_year_std, average_year_sharpe, max_daily_dd]
+    return [average_year_return_gross, average_year_std, average_year_sharpe, max_daily_dd]
 
 
+def resume_backtest(df_pred, bench_price, target_prices):
 
-def resume_backtest(df_pred_dict, bench_price, price):
+    index = df_pred.index
+    daily_returns = target_prices.pct_change().shift(1)
+    # perf_bench = price_to_perf(bench_price.loc[df_pred.index[0]:df_pred.index[-1]], log=False)
 
-    daily_returns = price.pct_change().shift(1)
-    perf_bench = price_to_perf(bench_price.loc[next(iter(df_pred_dict.items()))[1].index[0]:next(iter(df_pred_dict.items()))[1].index[-1]], log=False)
-
-    # bench_stats = perf_to_stat(perf_bench, perf_bench)
-    bench_stats = price_to_stats(bench_price, df_pred_dict['Ensemble'])
+    bench_stats = price_to_stats(bench_price, index)
     stats = []
     stats.append(bench_stats + [0])
-    for model_name in df_pred_dict:
-        # perf_gross = pred_to_perf(df_pred_dict[model_name], daily_returns, 0.)
-        # perf_net = pred_to_perf(df_pred_dict[model_name], daily_returns, 0.0012)
-        
-        turnover_num = turnover(df_pred_dict[model_name])
-        # stats.append(perf_to_stat(perf_gross, perf_net) + [turnover_num])
-        stats.append(perf_to_stat_2(df_pred_dict[model_name], daily_returns, 0.0012) + [turnover_num])
+    turnover_num = turnover(df_pred)
+    stats.append(perf_to_stat(df_pred, daily_returns, 0.0012) + [turnover_num])
     stats = np.array(stats)
 
-    df_stats = pd.DataFrame(data=stats, columns=['Gross avg. annual return (%)', 'Net avg. annual return (%)', 
-                                                'Avg. annual vol. (%)', 'Avg Sharpe ratio', 
+    df_stats = pd.DataFrame(data=stats, columns=['Avg. annual return (%)', 
+                                                'Avg. annual vol. (%)', 'Sharpe ratio', 
                                                 'Max. Drawdown (%)', 'Turnover'], 
-                            index=['Benchmark SPI'] + list(df_pred_dict.keys())).round(2)
+                            index=['Benchmark SPI', 'model']).round(2)
 
     df_stats.Turnover = df_stats.Turnover.apply(int)
 
     return df_stats
-
-
-
-# def annual_alpha_plot_grossnet(perf_bench, df_pred, model, daily_returns):
-#     perf_pred_gross = pred_to_perf(df_pred, daily_returns,  0.).rename('Model without transaction costs')
-#     perf_pred_net = pred_to_perf(df_pred, daily_returns, 0.0012).rename('Model with transaction costs')
-
-#     year_group_bench = perf_bench.resample('Y')
-#     year_group_pred_gross = perf_pred_gross.resample('Y')
-#     year_group_pred_net = perf_pred_net.resample('Y')
-
-#     annual_returns_bench = (year_group_bench.last() - year_group_bench.first()) / year_group_bench.first()
-#     annual_returns_pred_gross = (year_group_pred_gross.last() - year_group_pred_gross.first()) / year_group_pred_gross.first()
-#     annual_returns_pred_net = (year_group_pred_net.last() - year_group_pred_net.first()) / year_group_pred_net.first()
-
-#     annual_diff_gross = (annual_returns_pred_gross - annual_returns_bench) * 100
-#     annual_diff_net = (annual_returns_pred_net - annual_returns_bench) * 100
-
-#     df_annual_diff = pd.DataFrame(columns=['year', 'gross', 'net'])
-#     df_annual_diff['year'] = annual_diff_net.index.year
-#     df_annual_diff['year'] = df_annual_diff.year.apply(str)
-#     df_annual_diff['gross'] = annual_diff_gross.values
-#     df_annual_diff['net'] = annual_diff_net.values
-#     df_annual_diff = df_annual_diff.melt(id_vars=['year'], var_name='gross_net', value_name='alpha')
-#     df_annual_diff['sign'] = np.sign(df_annual_diff.alpha)
-
-#     fig, ax = plt.subplots(figsize=(14,6))
-#     sns.barplot(data=df_annual_diff, x='year', y='alpha', hue='gross_net', dodge=True)
-#     ax.get_legend().set_title(None)
-#     plt.ylabel('Alpha (%)')
-#     plt.xlabel('Year')
-#     plt.title('Annual Return of the model over Benchmark Return : ' + model)
-#     plt.show()

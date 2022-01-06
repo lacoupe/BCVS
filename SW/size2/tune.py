@@ -1,3 +1,5 @@
+from matplotlib.pyplot import subplot_mosaic
+from numpy.lib.shape_base import split
 import pandas as pd
 import numpy as np
 import torch
@@ -11,15 +13,12 @@ pd.set_option('display.max_columns', None)
 pd.set_option('display.width', 200)
 from sklearn.metrics import accuracy_score, confusion_matrix, f1_score, recall_score, precision_score
 
-
-
 import os
 os.environ['KMP_DUPLICATE_LIB_OK']='True'
 
 def backtest_strat(features, forward_weekly_returns, model_name='MLP',
                    nb_epochs=50, training_window=5, input_period=10,
                    batch_size=10, verbose=0, eta=1e-3, weight_decay=0, dropout=0.1):
-
 
     nbr_features = len(features.columns)
 
@@ -135,33 +134,33 @@ def tune_model():
     dropouts = [0.1, 0.2]
     batch_sizes = [20, 40]
     nbs_epochs = [2, 3, 4]
-    training_windows = [4]
 
+    training_window = 4
     verbose = 0
     input_period = 21
+    
     tuning_list = []
     for lr in tqdm(learning_rates):
-        for w in weight_decays:
-            for drop in dropouts:
-                for b in batch_sizes:
-                    for nb_epochs in nbs_epochs:
-                        for training_window in training_windows:
+        for w in tqdm(weight_decays):
+            for drop in tqdm(dropouts):
+                for b in tqdm(batch_sizes):
+                    for nb_epochs in tqdm(nbs_epochs):
 
-                            forward_weekly_returns = target_prices.rolling(5).apply(lambda x: np.log(x[-1] / x[0]) / len(x)).shift(-5)
-                            forward_weekly_returns['abs_diff'] = np.abs(forward_weekly_returns.SMALL_MID - forward_weekly_returns.LARGE)
-                            best_pred = (forward_weekly_returns.SMALL_MID > forward_weekly_returns.LARGE).astype(int)
+                        forward_weekly_returns = target_prices.rolling(5).apply(lambda x: np.log(x[-1] / x[0]) / len(x)).shift(-5)
+                        forward_weekly_returns['abs_diff'] = np.abs(forward_weekly_returns.SMALL_MID - forward_weekly_returns.LARGE)
+                        best_pred = (forward_weekly_returns.SMALL_MID > forward_weekly_returns.LARGE).astype(int)
 
-                            df_prob = backtest_strat(features=features, forward_weekly_returns=forward_weekly_returns,
-                                                    model_name=model_name, nb_epochs=nb_epochs,
-                                                    batch_size=b, verbose=verbose, 
-                                                    training_window=training_window, input_period=input_period,
-                                                    eta=lr, weight_decay=w, dropout=drop)
+                        df_prob = backtest_strat(features=features, forward_weekly_returns=forward_weekly_returns,
+                                                model_name=model_name, nb_epochs=nb_epochs,
+                                                batch_size=b, verbose=verbose, 
+                                                training_window=training_window, input_period=input_period,
+                                                eta=lr, weight_decay=w, dropout=drop)
 
-                            df_pred = (df_prob > 0.6).astype(int)
-                            df_true = best_pred.reindex(df_pred.index)
-                            tuning_list.append([lr, w, drop, nb_epochs, b, 
-                                                np.round(accuracy_score(df_pred.values, df_true.values), 2)
-                                            ])
+                        df_pred = (df_prob > 0.6).astype(int)
+                        df_true = best_pred.reindex(df_pred.index)
+                        tuning_list.append([lr, w, drop, nb_epochs, b, 
+                                            np.round(accuracy_score(df_pred.values, df_true.values), 2)
+                                        ])
     print(pd.DataFrame(data=tuning_list, columns=['Learning_rate', 'Weight_decay', 'Dropout', 
                                                     'Nb_epochs', 'Batch size','Accuracy']).sort_values('Accuracy').to_string(index=False))
 
