@@ -16,6 +16,13 @@ from dateutil.relativedelta import relativedelta
 #     rsi = 1 - 1 / (1 + rs)
 #     return rsi.fillna(0)
 
+def log_change(x):
+    return np.log(x[-1] / x[0]) / len(x)
+
+
+def pct_change(x):
+    return (x[-1] - x[0]) / x[0]
+
 
 def get_data():
     
@@ -40,20 +47,45 @@ def get_data():
 
     bench_price = data['SPI']
 
-    raw_features = data[data.columns.difference(['SPI', 'EURCHF', 'USDCHF'])]
+    bench_price = data['SPI']
 
-    raw_features = raw_features.drop(columns=['US 5YEAR', 'RUSSELL 2000', 'INDUSTRIALS', 'SILVER', 'US 2YEAR'])
+    data = data.drop(columns=['EURCHF', 'USDCHF', 'SPI', 'SURPRISE'])      
 
-    technical_features = raw_features[raw_features.columns.difference(['SURPRISE'])]
+    technical_features = data[['SMALL_MID', 'LARGE']]
 
-    mom5 = technical_features.rolling(5).apply(lambda x: np.log(x[-1] / x[0]) / len(x)).ewm(5).mean()
+    mom5 = technical_features.rolling(5).apply(lambda x: log_change(x))
     mom5 = mom5.add_suffix(' mom5')
 
-    mom21 = technical_features.rolling(21).apply(lambda x: np.log(x[-1] / x[0]) / len(x)).ewm(5).mean()
+    mom21 = technical_features.rolling(21).apply(lambda x: log_change(x))
     mom21 = mom21.add_suffix(' mom21')
 
-    mom63 = technical_features.rolling(63).apply(lambda x: np.log(x[-1] / x[0]) / len(x)).ewm(5).mean()
+    mom63 = technical_features.rolling(63).apply(lambda x: log_change(x))
     mom63 = mom63.add_suffix(' mom63')
+
+    vol21 = technical_features.rolling(21).std()
+    vol21 = vol21.add_suffix(' vol21')
+
+    features = pd.DataFrame(index=technical_features.index)
+    for feature in (set(data.columns) - set(technical_features)):
+        #features[feature] = fast_fracdiff(data[feature], 0.5)
+        features[feature] = data[feature].rolling(5).apply(lambda x: log_change(x))
+
+    features = pd.concat([mom5, mom21, mom63, vol21, features], axis=1).ewm(3).mean().dropna()
+
+    # raw_features = data[data.columns.difference(['SPI', 'EURCHF', 'USDCHF', 'SURPRISE'])]
+
+    # raw_features = raw_features.drop(columns=['US 5YEAR', 'RUSSELL 2000', 'INDUSTRIALS', 'SILVER', 'US 2YEAR'])
+
+    # technical_features = raw_features[raw_features.columns.difference(['SURPRISE'])]
+
+    # mom5 = technical_features.rolling(5).apply(lambda x: np.log(x[-1] / x[0]) / len(x)).ewm(5).mean()
+    # mom5 = mom5.add_suffix(' mom5')
+
+    # mom21 = technical_features.rolling(21).apply(lambda x: np.log(x[-1] / x[0]) / len(x)).ewm(5).mean()
+    # mom21 = mom21.add_suffix(' mom21')
+
+    # mom63 = technical_features.rolling(63).apply(lambda x: np.log(x[-1] / x[0]) / len(x)).ewm(5).mean()
+    # mom63 = mom63.add_suffix(' mom63')
 
     # ema_12 = technical_features.ewm(span=12).mean()
     # ema_26 = technical_features.ewm(span=26).mean()
@@ -62,18 +94,18 @@ def get_data():
 
     # raw_features['SURPRISE'] = fast_fracdiff(raw_features['SURPRISE'], 0.5)
 
-    features = pd.concat([mom5, mom21, mom63, raw_features['SURPRISE']], axis=1).dropna()
+    # features = pd.concat([mom5, mom21, mom63, raw_features['SURPRISE']], axis=1).dropna()
 
-    features = features.drop(columns=['FINANCIALS mom5', 'GOLD mom5', 'HEALTH CARE mom5',  
-                                      'MATERIALS mom5',  'SMALL_MID mom5',  
-                                      'US 10YEAR mom5',  'CONSUMER STAPLE mom21',  'GOLD mom21',  
-                                      'SMALL_MID mom21',  'US 10YEAR mom21', 
-                                      'CONSUMER STAPLE mom63',  'FINANCIALS mom63',  
-                                      'HEALTH CARE mom63',  'LARGE mom63',
-                                      'SMALL_MID mom63',  'US 10YEAR mom63'])
+    # features = features.drop(columns=['FINANCIALS mom5', 'GOLD mom5', 'HEALTH CARE mom5',  
+    #                                   'MATERIALS mom5',  'SMALL_MID mom5',  
+    #                                   'US 10YEAR mom5',  'CONSUMER STAPLE mom21',  'GOLD mom21',  
+    #                                   'SMALL_MID mom21',  'US 10YEAR mom21', 
+    #                                   'CONSUMER STAPLE mom63',  'FINANCIALS mom63',  
+    #                                   'HEALTH CARE mom63',  'LARGE mom63',
+    #                                   'SMALL_MID mom63',  'US 10YEAR mom63'])
 
-    features = features.drop(columns=[ 'CONSUMER STAPLE mom5', 'LARGE mom5', 'CONSUMER DIS. mom21', 
-                                        'BRENT mom63', 'GOLD mom63',  'MATERIALS mom63'])
+    # features = features.drop(columns=[ 'CONSUMER STAPLE mom5', 'LARGE mom5', 'CONSUMER DIS. mom21', 
+    #                                     'BRENT mom63', 'GOLD mom63',  'MATERIALS mom63'])
 
     return bench_price, target_prices, features
 
