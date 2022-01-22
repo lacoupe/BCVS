@@ -28,16 +28,18 @@ def backtest_strat(features, forward_weekly_returns, model_name='MLP',
     best_pred = (forward_weekly_returns.SMALL_MID > forward_weekly_returns.LARGE).astype(int)
 
     # The moving window every 26 weeks
-    first_end_date = features.index[input_period] + relativedelta(years=training_window)
-    all_end_dates = best_pred.loc[first_end_date:].asfreq('W-FRI')[::26].index
+    # first_end_date = features.index[input_period] + relativedelta(years=training_window)
+    first_end_date = '2013-06-01'
+    last_end_date = '2015-06-01'
+    all_end_dates = best_pred.loc[first_end_date:last_end_date].asfreq('W-FRI')[::26].index
 
     for i, end_date in enumerate(all_end_dates):
 
-        start_date = next_friday(end_date - relativedelta(years=training_window))
+        start_date = end_date - relativedelta(years=training_window)
 
         df_output = best_pred.loc[start_date:end_date]
 
-        start_date_test = next_friday(end_date - relativedelta(weeks=26))
+        start_date_test = end_date - relativedelta(weeks=26)
         split_index = df_output.index.get_loc(start_date_test) + 1
 
         threshold_return_diff = 0.0005
