@@ -47,9 +47,7 @@ def get_data():
 
     bench_price = data['SPI']
 
-    bench_price = data['SPI']
-
-    data = data.drop(columns=['EURCHF', 'USDCHF', 'SPI', 'SURPRISE'])      
+    data = data.drop(columns=['EURCHF', 'USDCHF', 'SPI'])      
 
     technical_features = data[['SMALL_MID', 'LARGE']]
 
@@ -62,50 +60,24 @@ def get_data():
     mom63 = technical_features.rolling(63).apply(lambda x: log_change(x))
     mom63 = mom63.add_suffix(' mom63')
 
-    vol21 = technical_features.rolling(21).std()
+    vol21 = technical_features.pct_change().rolling(21).std()
     vol21 = vol21.add_suffix(' vol21')
 
+    skew21 = technical_features.pct_change().rolling(21).skew()
+    skew21 = skew21.add_suffix(' skew21')
+
+    corr = target_prices.SMALL_MID.pct_change().rolling(21).corr(target_prices.LARGE.pct_change()).rename('correlation')
+
     features = pd.DataFrame(index=technical_features.index)
-    for feature in (set(data.columns) - set(technical_features)):
+    for feature in ['MATERIALS', 'SP500', 'BRENT', 'FINANCIALS', 'GOLD', 'US 5YEAR', 
+                                    'US 2YEAR', 'INDUSTRIALS', 'US 10YEAR', 'CONSUMER DIS.', 'HEALTH CARE', 
+                                    'CONSUMER STAPLE', 'RUSSELL 2000', 'SILVER']:
         #features[feature] = fast_fracdiff(data[feature], 0.5)
         features[feature] = data[feature].rolling(5).apply(lambda x: log_change(x))
 
-    features = pd.concat([mom5, mom21, mom63, vol21, features], axis=1).ewm(3).mean().dropna()
+    features = pd.concat([mom5, mom21, mom63, vol21, skew21, corr, features, data[['SURPRISE', 'VSMI', 'VIX']]], axis=1).ewm(5).mean().dropna()
 
-    # raw_features = data[data.columns.difference(['SPI', 'EURCHF', 'USDCHF', 'SURPRISE'])]
-
-    # raw_features = raw_features.drop(columns=['US 5YEAR', 'RUSSELL 2000', 'INDUSTRIALS', 'SILVER', 'US 2YEAR'])
-
-    # technical_features = raw_features[raw_features.columns.difference(['SURPRISE'])]
-
-    # mom5 = technical_features.rolling(5).apply(lambda x: np.log(x[-1] / x[0]) / len(x)).ewm(5).mean()
-    # mom5 = mom5.add_suffix(' mom5')
-
-    # mom21 = technical_features.rolling(21).apply(lambda x: np.log(x[-1] / x[0]) / len(x)).ewm(5).mean()
-    # mom21 = mom21.add_suffix(' mom21')
-
-    # mom63 = technical_features.rolling(63).apply(lambda x: np.log(x[-1] / x[0]) / len(x)).ewm(5).mean()
-    # mom63 = mom63.add_suffix(' mom63')
-
-    # ema_12 = technical_features.ewm(span=12).mean()
-    # ema_26 = technical_features.ewm(span=26).mean()
-    # MACD = (ema_12 - ema_26) - (ema_12 - ema_26).ewm(span=9).mean()
-    # MACD = MACD.add_suffix(' MACD')
-
-    # raw_features['SURPRISE'] = fast_fracdiff(raw_features['SURPRISE'], 0.5)
-
-    # features = pd.concat([mom5, mom21, mom63, raw_features['SURPRISE']], axis=1).dropna()
-
-    # features = features.drop(columns=['FINANCIALS mom5', 'GOLD mom5', 'HEALTH CARE mom5',  
-    #                                   'MATERIALS mom5',  'SMALL_MID mom5',  
-    #                                   'US 10YEAR mom5',  'CONSUMER STAPLE mom21',  'GOLD mom21',  
-    #                                   'SMALL_MID mom21',  'US 10YEAR mom21', 
-    #                                   'CONSUMER STAPLE mom63',  'FINANCIALS mom63',  
-    #                                   'HEALTH CARE mom63',  'LARGE mom63',
-    #                                   'SMALL_MID mom63',  'US 10YEAR mom63'])
-
-    # features = features.drop(columns=[ 'CONSUMER STAPLE mom5', 'LARGE mom5', 'CONSUMER DIS. mom21', 
-    #                                     'BRENT mom63', 'GOLD mom63',  'MATERIALS mom63'])
+    features = features.drop(columns=['VIX', 'US 10YEAR', 'SP500', 'MATERIALS', 'CONSUMER DIS.', 'CONSUMER STAPLE', 'FINANCIALS'])
 
     return bench_price, target_prices, features
 

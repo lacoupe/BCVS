@@ -202,21 +202,20 @@ def price_to_perf(df, log=False):
 #     return [average_year_return_gross, average_year_return_net, average_year_std, average_year_sharpe, max_daily_dd]
 
 
-def perf_to_stat(df_pred, daily_returns, tax=0.0012):
+def perf_to_stat(df_pred, daily_returns):
 
     first_date = df_pred.index[0]
     last_date = df_pred.index[-1]
     daily_ret = daily_returns.loc[first_date:last_date]
     df_pred_daily = df_pred.reindex(daily_ret.index, method='ffill').shift(1)
     df_daily_perf = (df_pred_daily * daily_ret).sum(axis=1)
-    df_cost = (df_pred_daily.diff().fillna(0) != 0).any(axis=1).astype(int) * tax
-    # cumul_perf = (1 + df_daily_perf - df_cost).cumprod()
     cumul_perf = (1 + df_daily_perf).cumprod()
+
     
     average_year_return_gross = df_daily_perf.mean() * 252 * 100
     # average_year_return_net = (df_daily_perf - df_cost).mean() * 252 * 100
 
-    average_year_std = df_daily_perf.std() * np.sqrt(256) * 100
+    average_year_std = df_daily_perf.std() * np.sqrt(252) * 100
     average_year_sharpe = average_year_return_gross / average_year_std
     
     dd_window = 252
@@ -236,7 +235,7 @@ def price_to_stats(price, index):
     average_year_return_gross = daily_ret.mean() * 252 * 100
     average_year_return_net = average_year_return_gross
 
-    average_year_std = daily_ret.std() * np.sqrt(256) * 100
+    average_year_std = daily_ret.std() * np.sqrt(252) * 100
     average_year_sharpe = average_year_return_net / average_year_std
 
     dd_window = 252
@@ -250,14 +249,15 @@ def price_to_stats(price, index):
 def resume_backtest(df_pred, bench_price, target_prices):
 
     index = df_pred.index
-    daily_returns = target_prices.pct_change().shift(1)
+    daily_returns = target_prices.pct_change()
+
     # perf_bench = price_to_perf(bench_price.loc[df_pred.index[0]:df_pred.index[-1]], log=False)
 
     bench_stats = price_to_stats(bench_price, index)
     stats = []
     stats.append(bench_stats + [0])
     turnover_num = turnover(df_pred)
-    stats.append(perf_to_stat(df_pred, daily_returns, 0.0012) + [turnover_num])
+    stats.append(perf_to_stat(df_pred, daily_returns) + [turnover_num])
     stats = np.array(stats)
 
     df_stats = pd.DataFrame(data=stats, columns=['Avg. annual return (%)', 
