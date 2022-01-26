@@ -6,7 +6,7 @@ import torch
 from dateutil.relativedelta import relativedelta
 from tqdm import tqdm
 from helpers import performance_plot, resume_backtest, annual_alpha_plot, price_to_perf, last_month, next_friday, prob_to_pred, printmetrics
-from models import MLP, LSTM# , ConvNet, LSTM
+from models import MLP, RNN, GRU, LSTM
 from train_test import train, test
 from data import get_data
 pd.set_option('display.max_columns', None)
@@ -37,6 +37,7 @@ def backtest_strat(features, forward_weekly_returns, model_name='MLP',
 
         end_date = datetime.strptime(end_date, '%Y-%m-%d')
         start_date = end_date - relativedelta(years=training_window)
+        start_date_input = start_date - relativedelta(days=input_period * 2)
 
         df_output = best_pred.loc[start_date:end_date]
 
@@ -45,10 +46,9 @@ def backtest_strat(features, forward_weekly_returns, model_name='MLP',
         index_test = df_output.iloc[split_index:].index
 
         threshold_return_diff = 0.0005
-        features_std = pd.DataFrame(index=df_output.index, 
-                                    data=PowerTransformer(method='yeo-johnson', standardize=True).fit_transform(features.reindex(df_output.index)), 
+        features_std = pd.DataFrame(index=best_pred.loc[start_date_input:end_date].index, 
+                                    data=PowerTransformer(method='yeo-johnson', standardize=True).fit_transform(features.reindex(best_pred.loc[start_date_input:end_date].index)), 
                                     columns=features.columns)
-
         if model_name == 'MLP':
 
             df_input = features_std.reindex(df_output.index)
@@ -63,7 +63,7 @@ def backtest_strat(features, forward_weekly_returns, model_name='MLP',
             X_train = df_input_train.values[index_train]
             X_test = df_input_test.values
 
-        elif model_name == 'LSTM':
+        else:
 
             df_input = features_std.loc[:end_date]
 
@@ -81,6 +81,7 @@ def backtest_strat(features, forward_weekly_returns, model_name='MLP',
             X_train = X[:split_index]
             X_train = X_train[index_train]
             X_test = X[split_index:]
+
         y_train = df_output_train.values[index_train]
         y_test = df_output_test.values
         
@@ -97,8 +98,14 @@ def backtest_strat(features, forward_weekly_returns, model_name='MLP',
         if model_name == 'MLP':
             model = MLP(nbr_features, num_layers=num_layers, hidden_size=hidden_size, pdrop=dropout)
 
+        elif model_name == 'RNN':
+            model = RNN(nbr_features, hidden_size)
+
+        elif model_name == 'GRU':
+            model = GRU(nbr_features, hidden_size)
+
         elif model_name == 'LSTM':
-            model = LSTM(nbr_features, hidden_size=hidden_size)
+            model = LSTM(nbr_features, hidden_size)
 
         model.to(device)
 
@@ -118,8 +125,6 @@ def backtest_strat(features, forward_weekly_returns, model_name='MLP',
     return pd.DataFrame(index=df_prob_all.index, data=signal)
 
 def tune_model():
-
-    print('GPU available :', torch.cuda.is_available())
     
     _, target_prices, features = get_data()
     target_prices = target_prices
@@ -130,7 +135,7 @@ def tune_model():
     forward_weekly_returns = forward_weekly_returns.dropna()
     best_pred = (forward_weekly_returns.SMALL_MID > forward_weekly_returns.LARGE).astype(int)
 
-    model_name = 'MLP'
+    model_name = 'RNN'
 
     # fixed parameters
     nb_epochs = 50
@@ -138,36 +143,41 @@ def tune_model():
     weight_decay = 1e-4
 
     # Grid parameters
-    num_layers_list = [1, 2, 3]
-    hidden_size_list = [10, 20, 30]
-    eta_list = [1e-3]
+    num_layers_list = [1]
+    hidden_size_list = [5, 10, 20, 30, 50]
+    eta_list = [1e-4, 1e-3]
     dropout_list = [0.1, 0.2, 0.3]
+    dropout = 0.
+    nb_epochs_list = [10]
 
     training_window = 4
     verbose = 0
-    input_period = 21
-    
+    # input_period = 21
+    input_period_list = [10, 21]
+    print(model_name)
     tuning_list = []
     for num_layers in tqdm(num_layers_list, position=0):
         for hidden_size in tqdm(hidden_size_list, position=1, leave=False):
             for eta in tqdm(eta_list, position=2, leave=False):
-                for dropout in tqdm(dropout_list, position=3, leave=False):
-                    
-                    df_prob = backtest_strat(features=features, forward_weekly_returns=forward_weekly_returns,
-                                            model_name=model_name, nb_epochs=nb_epochs,
-                                            batch_size=batch_size, verbose=verbose, 
-                                            training_window=training_window, input_period=input_period, num_layers=num_layers,
-                                            eta=eta, weight_decay=weight_decay, hidden_size=hidden_size, dropout=dropout)
-                    init_length = len(df_prob)
-                    df_prob = df_prob[(df_prob > 0.65) | (df_prob < 0.35)].dropna()
-                    df_pred = (df_prob > 0.5).astype(int)
-                    df_true = best_pred.reindex(df_pred.index)
-                    tuning_list.append([num_layers, hidden_size, eta, dropout, len(df_true) / init_length,
-                                        100 * np.round(accuracy_score(df_pred.values, df_true.values), 4)
-                                        ])
-    print(df_prob.tail(20))
-    print(pd.DataFrame(data=tuning_list, columns=['num_layers', 'hidden_size', 'eta', 'dropout', 'Length', 'Accuracy']).sort_values('Accuracy').tail(20).to_string(index=False))
+                for nb_epochs in tqdm(nb_epochs_list, position=3, leave=False):
+                    for input_period in tqdm(input_period_list, position=4, leave=False):
+
+                        df_prob = backtest_strat(features=features, forward_weekly_returns=forward_weekly_returns,
+                                                model_name=model_name, nb_epochs=nb_epochs,
+                                                batch_size=batch_size, verbose=verbose, 
+                                                training_window=training_window, input_period=input_period, num_layers=num_layers,
+                                                eta=eta, weight_decay=weight_decay, hidden_size=hidden_size, dropout=dropout)
+                        init_length = len(df_prob)
+                        df_prob = df_prob[(df_prob > 0.6) | (df_prob < 0.4)].dropna()
+                        df_pred = (df_prob > 0.5).astype(int)
+                        df_true = best_pred.reindex(df_pred.index)
+                        tuning_list.append([num_layers, hidden_size, input_period, nb_epochs, len(df_true) / init_length,
+                                            100 * np.round(accuracy_score(df_pred.values, df_true.values), 4)
+                                            ])
+
+    print(pd.DataFrame(data=tuning_list, columns=['num_layers', 'hidden_size', 'input_period', 'nb_epochs', 'Length', 'Accuracy']).sort_values('Accuracy').tail(20).to_string(index=False))
 
     # MLP: num_layers = 1, hidden_size = 20, dropout = 0.3, eta=0.001
+    # RNN: hidden_size=10, input_period=42, epoch=60
 if __name__ == "__main__":
     tune_model()
