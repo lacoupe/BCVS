@@ -229,21 +229,20 @@ def price_to_stats(price, index):
 
     first_date = index[0]
     last_date = index[-1]
-    daily_ret = price.pct_change().shift(1).loc[first_date:last_date]
+    daily_ret = price.pct_change().loc[first_date:last_date]
     perf = (daily_ret + 1).cumprod()
 
-    average_year_return_gross = daily_ret.mean() * 252 * 100
-    average_year_return_net = average_year_return_gross
+    average_year_return = daily_ret.mean() * 252 * 100
 
     average_year_std = daily_ret.std() * np.sqrt(252) * 100
-    average_year_sharpe = average_year_return_net / average_year_std
+    average_year_sharpe = average_year_return / average_year_std
 
     dd_window = 252
     roll_max = perf.rolling(dd_window).max()
     daily_dd = perf / roll_max - 1
     max_daily_dd = np.abs(daily_dd.rolling(dd_window, min_periods=1).min()).max() * 100
 
-    return [average_year_return_gross, average_year_std, average_year_sharpe, max_daily_dd]
+    return [average_year_return, average_year_std, average_year_sharpe, max_daily_dd]
 
 
 def resume_backtest(df_pred, bench_price, target_prices):

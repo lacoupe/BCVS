@@ -5,7 +5,7 @@ from dateutil.relativedelta import relativedelta
 from tqdm import tqdm
 from helpers import performance_plot, resume_backtest, annual_alpha_plot, price_to_perf, last_month, next_friday, prob_to_pred, printmetrics
 from sklearn.metrics import classification_report
-from models import MLP, GRU, LSTM
+from models import MLP, RNN, GRU, LSTM
 from train_test import train, test
 from data import get_data
 pd.set_option('display.max_columns', None)
@@ -36,19 +36,21 @@ def backtest_strat(features, forward_weekly_returns, hidden_size=10, model_name=
                      '2017-07-01', '2018-01-01', '2018-07-01', '2019-01-01', 
                      '2019-07-01', '2020-01-01', '2020-07-01', '2021-01-01',
                      '2021-07-01']
+
     for end_date in tqdm(all_end_dates):
 
         end_date = datetime.strptime(end_date, '%Y-%m-%d')
-        start_date = next_friday(end_date - relativedelta(years=training_window))
+        start_date = end_date - relativedelta(years=training_window)
+        start_date_input = start_date - relativedelta(days=input_period * 2)
 
         df_output = best_pred.loc[start_date:end_date]
 
-        start_date_test = next_friday(end_date - relativedelta(months=6))
+        start_date_test = end_date - relativedelta(months=6)
         split_index = df_output.index.get_loc(start_date_test, method='bfill')
         index_test = df_output.iloc[split_index:].index
 
-        features_std = pd.DataFrame(index=df_output.index, 
-                                    data=PowerTransformer(method='yeo-johnson', standardize=True).fit_transform(features.reindex(df_output.index)), 
+        features_std = pd.DataFrame(index=best_pred.loc[start_date_input:end_date].index, 
+                                    data=PowerTransformer(method='yeo-johnson', standardize=True).fit_transform(features.reindex(best_pred.loc[start_date_input:end_date].index)), 
                                     columns=features.columns)
 
         if model_name == 'MLP':
@@ -75,7 +77,13 @@ def backtest_strat(features, forward_weekly_returns, hidden_size=10, model_name=
             forward_weekly_returns_train = forward_weekly_returns.reindex(df_output_train.index)
             index_train = list(df_output_train.reset_index()[forward_weekly_returns_train.reset_index().abs_diff > threshold_return_diff].index)
             X = []
+            # print(index_train)
             for idx in df_output.index:
+                # print(idx)
+                # print(input_period)
+                # print(df_input.head())
+                # print(df_input.loc[:idx].head())
+                # print(df_input.loc[:idx].iloc[-input_period:].head())
                 df_input_period = df_input.loc[:idx].iloc[-input_period:]
                 X_period = df_input_period.values.reshape(input_period, nbr_features)
                 X.append(X_period)
@@ -92,6 +100,9 @@ def backtest_strat(features, forward_weekly_returns, hidden_size=10, model_name=
         if model_name == 'MLP':
             model = MLP(nbr_features, num_layers=num_layers, hidden_size=hidden_size, pdrop=dropout)
             
+        elif model_name == 'RNN':
+            model = RNN(nbr_features, hidden_size)
+
         elif model_name == 'GRU':
             model = GRU(nbr_features, hidden_size)
 
@@ -131,7 +142,7 @@ def run_backtest():
     hidden_size = 20
     num_layers = 1
 
-    input_period = 21
+    input_period = 10
 
     forward_weekly_returns = target_prices.rolling(5).apply(lambda x: np.log(x[-1] / x[0]) / len(x)).shift(-5)
     forward_weekly_returns['abs_diff'] = np.abs(forward_weekly_returns.SMALL_MID - forward_weekly_returns.LARGE)
