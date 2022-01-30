@@ -135,25 +135,25 @@ def tune_model():
     forward_weekly_returns = forward_weekly_returns.dropna()
     best_pred = (forward_weekly_returns.SMALL_MID > forward_weekly_returns.LARGE).astype(int)
 
-    model_name = 'RNN'
+    model_name = 'GRU'
 
     # fixed parameters
-    nb_epochs = 50
+    nb_epochs = 30
     batch_size = 20
     weight_decay = 1e-4
 
     # Grid parameters
     num_layers_list = [1]
-    hidden_size_list = [5, 10, 20, 30, 50]
-    eta_list = [1e-4, 1e-3]
+    hidden_size_list = [5, 6, 7, 8, 9, 10]
+    eta_list = [1e-3]
     dropout_list = [0.1, 0.2, 0.3]
     dropout = 0.
-    nb_epochs_list = [10]
+    nb_epochs_list = [50]
 
     training_window = 4
     verbose = 0
     # input_period = 21
-    input_period_list = [10, 21]
+    input_period_list = [21]
     print(model_name)
     tuning_list = []
     for num_layers in tqdm(num_layers_list, position=0):

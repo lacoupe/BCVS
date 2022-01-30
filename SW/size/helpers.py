@@ -229,7 +229,7 @@ def price_to_stats(price, index):
 
     first_date = index[0]
     last_date = index[-1]
-    daily_ret = price.pct_change().loc[first_date:last_date]
+    daily_ret = price.loc[first_date:last_date].pct_change()
     perf = (daily_ret + 1).cumprod()
 
     average_year_return = daily_ret.mean() * 252 * 100

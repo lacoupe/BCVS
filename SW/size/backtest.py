@@ -101,13 +101,10 @@ def backtest_strat(features, forward_weekly_returns, hidden_size=10, model_name=
             model = MLP(nbr_features, num_layers=num_layers, hidden_size=hidden_size, pdrop=dropout)
             
         elif model_name == 'RNN':
-            model = RNN(nbr_features, hidden_size)
+            model = RNN(nbr_features, hidden_size=5)
 
         elif model_name == 'GRU':
-            model = GRU(nbr_features, hidden_size)
-
-        elif model_name == 'LSTM':
-            model = LSTM(nbr_features, hidden_size)
+            model = GRU(nbr_features, hidden_size=9)
 
         # Train the model
         train(model, X_train, y_train, nb_epochs=nb_epochs, X_test=X_test, y_test=y_test, 
@@ -128,7 +125,7 @@ def run_backtest():
     
     bench_price, target_prices, features = get_data()
 
-    model_name = 'MLP'
+    model_name = 'RNN'
 
     batch_size = 20
     verbose = 0
@@ -151,6 +148,7 @@ def run_backtest():
     for seed in seeds:
 
         torch.manual_seed(seed)
+        print(f'SEED = {seed}')
 
         df_prob = backtest_strat(features=features, forward_weekly_returns=forward_weekly_returns,
                                 model_name=model_name, nb_epochs=nb_epochs,
@@ -176,7 +174,7 @@ def run_backtest():
         benchmark_portfolio = benchmark_portfolio.reindex(portfolio.index, method='bfill')
 
         portfolio = portfolio * 0.15 + benchmark_portfolio
-
+        print(portfolio.index[0], portfolio.index[-1])
         df_resume = resume_backtest(portfolio, bench_price, target_prices)
 
         if seed == 0:
